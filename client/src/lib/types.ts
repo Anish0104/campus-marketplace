@@ -36,3 +36,33 @@ export type Message = {
   body: string;
   createdAt: string;
 };
+
+/** Raw document returned by the listing API; seller is not populated. */
+export type Listing = {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  condition: Condition;
+  photos: string[];
+  seller: string;
+  status: "active" | "sold" | "removed";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateListingInput = {
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  condition: Condition;
+  photoUploadId?: string;
+};
+
+export type ListingPhotoUpload = {
+  photoUploadId: string;
+  expiresAt: string;
+  photos: { url: string; publicId: string }[];
+};
