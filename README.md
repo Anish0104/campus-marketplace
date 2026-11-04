@@ -41,14 +41,17 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-The home page shows a green "Backend connected" chip when both are running.
+Then open:
+
+- http://localhost:3000/ui for the shared components
+- http://localhost:3000/messages for chat. Click **Start a test conversation**, then open a second browser window, switch **Test account** to Sam Okafor, and reply. Messages appear in both windows instantly.
 
 ## Useful commands
 
 | Where | Command | What it does |
 | --- | --- | --- |
 | server | `npm run dev` | Start the API with auto-reload |
-| server | `npm test` | Run the tests in `server/tests/` |
+| server | `npm test` | Run the tests in `server/tests/` (needs MongoDB running) |
 | server | `npm run lint` | Type-check |
 | client | `npm run dev` | Start the website |
 | client | `npm run lint` | Lint |
@@ -59,11 +62,13 @@ The home page shows a green "Backend connected" chip when both are running.
 ```
 client/
   src/app/          pages (one folder per route)
-  src/components/   shared UI components
-  src/theme/        MUI theme (colors, fonts)
+  src/components/   shared UI components (see /ui)
+  src/lib/          API calls, shared types, helpers
+  src/theme/        MUI theme and color tokens
 server/
   src/routes/       one router file per feature
   src/models/       one Mongoose model per collection
+  src/middleware/   requireUser (who is signed in)
   src/app.ts        registers routers
   src/socket.ts     real-time chat
   tests/            API tests

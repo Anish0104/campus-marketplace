@@ -10,7 +10,7 @@ const MONGODB_URI =
 
 const app = createApp();
 const httpServer = createServer(app);
-initSocket(httpServer);
+app.set("io", initSocket(httpServer));
 
 connectDB(MONGODB_URI).then(() => {
   httpServer.listen(PORT, () => {

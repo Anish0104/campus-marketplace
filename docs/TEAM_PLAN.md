@@ -35,20 +35,7 @@ Each person builds their feature end to end (pages, API, data model, tests) and 
 | Sign-in | Rutgers NetID (CAS) |
 | CI | GitHub Actions |
 
-## Midterm sprint (due Nov 6)
 
-Goal: log in, post a listing with a photo, see it in the feed, all deployed. Code freeze Wed Nov 4.
-
-| Member | Tasks |
-| --- | --- |
-| Anish | Repo and CI (Oct 30) · Wireframes (Nov 1) · Theme and shared components (Nov 3) · Chat prototype (Nov 4) |
-| Krisha | Test login (Oct 31) · NetID access request (Nov 2) |
-| Anuj | Listing API (Nov 2) · New listing form with photo upload (Nov 4) |
-| Aryan | Feed API (Nov 2) · Feed page (Nov 4) |
-| Kunal | Flag model and admin wireframe (Nov 2) · Database schema diagram (Nov 4) |
-| Santanu | Profile page (Nov 2) · Midterm slides (Nov 4) |
-| Anand | Hosting accounts (Nov 1) · Deployed site (Nov 3) · Notification setup and test plan (Nov 4) |
-| Everyone | Rehearsal (Nov 5) |
 
 ## Midterm presentation
 
