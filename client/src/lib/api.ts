@@ -11,21 +11,25 @@ type Options = {
   body?: unknown;
   /** TEMPORARY until sign-in lands: sent as the x-user-id header. */
   userId?: string;
+  signal?: AbortSignal;
 };
 
 /** Calls the API and returns parsed JSON, or throws an ApiError with the server's message. */
-export async function apiFetch<T>(path: string, { method = "GET", body, userId }: Options = {}): Promise<T> {
+export async function apiFetch<T>(path: string, { method = "GET", body, userId, signal }: Options = {}): Promise<T> {
   let res: Response;
   try {
+    const multipart = typeof FormData !== "undefined" && body instanceof FormData;
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !multipart ? { "Content-Type": "application/json" } : {}),
         ...(userId ? { "x-user-id": userId } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: multipart ? body as FormData : body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new ApiError("Can't reach the server. Check that the backend is running.", 0);
   }
 
