@@ -35,5 +35,14 @@ const listingSchema = new Schema(
   { timestamps: true }
 );
 
+// Feed and search (Aryan). The feed always filters on status and sorts by date or price.
+listingSchema.index({ status: 1, createdAt: -1 });
+listingSchema.index({ status: 1, price: 1 });
+// MongoDB allows one text index per collection. Title matches count more than description.
+listingSchema.index(
+  { title: "text", description: "text" },
+  { name: "listing_text_search", weights: { title: 5, description: 1 }, default_language: "english" }
+);
+
 export type ListingDoc = HydratedDocument<InferSchemaType<typeof listingSchema>>;
 export const Listing = model("Listing", listingSchema);

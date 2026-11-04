@@ -1,5 +1,5 @@
 import { apiFetch } from "./api";
-import type { CreateListingInput, Listing, ListingPhotoUpload, ListingSummary } from "./types";
+import type { CreateListingInput, FeedListing, Listing, ListingPhotoUpload, ListingSummary } from "./types";
 
 export const LISTING_LIMITS = { title: 120, description: 5000, category: 80, photos: 5, photoBytes: 5 * 1024 * 1024 };
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -19,7 +19,7 @@ export function getListing(userId: string, id: string, signal?: AbortSignal) {
 }
 
 /** Feed/cards can reuse this without inventing a seller name. */
-export function toListingSummary(listing: Listing): ListingSummary {
+export function toListingSummary(listing: Listing | FeedListing): ListingSummary {
   return {
     id: listing._id, title: listing.title, price: listing.price,
     category: listing.category, condition: listing.condition,

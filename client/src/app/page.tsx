@@ -1,9 +1,9 @@
-import LinkButton from "@/components/LinkButton";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import EmptyState from "@/components/EmptyState";
+import { Suspense } from "react";
+import LoadingGrid from "@/components/LoadingGrid";
 import PageHeader from "@/components/PageHeader";
+import FeedView from "@/components/feed/FeedView";
 
-// Feed page. Aryan replaces the empty state with <ListingGrid listings={...} />.
+// Feed page (Aryan): search, filters and the newest listings. Filters live in the URL.
 export default function Home() {
   return (
     <>
@@ -11,16 +11,10 @@ export default function Home() {
         title="Browse listings"
         description="Textbooks, furniture and everything else, from Rutgers students only."
       />
-      <EmptyState
-        icon={<StorefrontOutlinedIcon />}
-        title="No listings yet"
-        description="Be the first to post something you no longer need."
-        action={
-          <LinkButton href="/listings/new" variant="contained">
-            Sell an item
-          </LinkButton>
-        }
-      />
+      {/* FeedView reads the URL's search params, which needs a Suspense boundary. */}
+      <Suspense fallback={<LoadingGrid />}>
+        <FeedView />
+      </Suspense>
     </>
   );
 }

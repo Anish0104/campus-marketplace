@@ -41,8 +41,11 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
+Optional: fill the feed with 30 sample listings (`npm run seed:listings` in `server/`).
+
 Then open:
 
+- http://localhost:3000 for the feed. Search, filter by category, condition and price, and sort
 - http://localhost:3000/ui for the shared components
 - http://localhost:3000/messages for chat. Click **Start a test conversation**, then open a second browser window, switch **Test account** to Sam Okafor, and reply. Messages appear in both windows instantly.
 
@@ -51,6 +54,7 @@ Then open:
 | Where | Command | What it does |
 | --- | --- | --- |
 | server | `npm run dev` | Start the API with auto-reload |
+| server | `npm run seed:listings` | Add or reset the sample listings (`-- --remove` deletes them) |
 | server | `npm test` | Run the tests in `server/tests/` (needs MongoDB running) |
 | server | `npm run lint` | Type-check |
 | client | `npm run dev` | Start the website |

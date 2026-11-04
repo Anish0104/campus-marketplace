@@ -52,6 +52,23 @@ export type Listing = {
   updatedAt: string;
 };
 
+/** A listing as the feed returns it: everything a card needs, without the description. */
+export type FeedListing = Omit<Listing, "description">;
+
+export type FeedSort = "newest" | "price_asc" | "price_desc";
+
+/** One page of GET /api/listings. */
+export type FeedPage = {
+  listings: FeedListing[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+/** A category that has active listings, from GET /api/listings/categories. */
+export type FeedCategory = { name: string; count: number };
+
 export type CreateListingInput = {
   title: string;
   description: string;

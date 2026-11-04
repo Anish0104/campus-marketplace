@@ -12,7 +12,8 @@
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "photos:cleanup": "tsx src/scripts/cleanupListingPhotos.ts"
+    "photos:cleanup": "tsx src/scripts/cleanupListingPhotos.ts",
+    "seed:listings": "tsx src/scripts/seedListings.ts"
   },
   "dependencies": {
     "cloudinary": "^2.11.0",
