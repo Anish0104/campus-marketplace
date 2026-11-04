@@ -3,6 +3,8 @@ import cors from "cors";
 import { healthRouter } from "./routes/health";
 import { conversationsRouter } from "./routes/conversations";
 
+import { listingsRouter } from "./routes/listings";
+
 export function createApp() {
   const app = express();
 
@@ -17,6 +19,7 @@ export function createApp() {
   // Each feature adds its router here, e.g. app.use("/api/listings", listingsRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/conversations", conversationsRouter);
+  app.use("/api/listings", listingsRouter);
 
   // Last resort: turn unexpected errors into a JSON 500 instead of an HTML page.
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
