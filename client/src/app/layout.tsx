@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Container from "@mui/material/Container";
+import "@fontsource-variable/figtree";
+import "@fontsource-variable/bricolage-grotesque";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import AppHeader from "@/components/AppHeader";
 
 export const metadata: Metadata = {
   title: "Campus Marketplace",
@@ -11,7 +15,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <AppHeader />
+          <Container component="main" maxWidth="lg" sx={{ py: { xs: 3, sm: 5 } }}>
+            {children}
+          </Container>
+        </Providers>
       </body>
     </html>
   );

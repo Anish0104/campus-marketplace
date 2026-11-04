@@ -11,6 +11,13 @@ jobs:
     defaults:
       run:
         working-directory: server
+    services:
+      mongo:
+        image: mongo:8
+        ports:
+          - 27017:27017
+    env:
+      MONGODB_TEST_URI: mongodb://127.0.0.1:27017/campus-marketplace-test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
