@@ -132,7 +132,7 @@ is retained to avoid allowing reuse of an ambiguously successful write.
 `GET /api/listings/:id` returns **200** with the same document shape to any
 signed-in user. Invalid ObjectIds return **400**; missing documents return **404**.
 It does not filter by status. Invalid creation input returns **400**.
-No `GET /api/listings` feed endpoint is implemented.
+The feed endpoint `GET /api/listings` is documented in [FEED.md](FEED.md).
 
 ## Storage configuration
 
@@ -249,8 +249,8 @@ to `id`, `photos[0]` to optional `imageUrl`, and copies the other card fields.
 `sellerName` stays absent until a public account API exists. Existing ListingCard
 and ListingGrid contracts are unchanged.
 
-Aryan still owns the feed/search API and browse page; newly created listings do
-not yet appear there. Keep the detail URL to reopen a listing. Anish's messaging
+Newly created listings appear at the top of the feed on the home page; see
+[FEED.md](FEED.md). Anish's messaging
 flow still needs to load Listing and derive seller/title on the server instead
 of trusting conversation request fields before wiring a contact-seller action.
 No chat action, edit, delete, mark-sold or other teammates' features are added.
