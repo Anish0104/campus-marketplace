@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Container from "@mui/material/Container";
 import "@fontsource-variable/figtree";
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en">
       <body>
         <Providers>
-          <AppHeader />
+          <Suspense fallback={null}>
+            <AppHeader />
+          </Suspense>
           <Container component="main" maxWidth="lg" sx={{ py: { xs: 3, sm: 5 } }}>
             {children}
           </Container>
