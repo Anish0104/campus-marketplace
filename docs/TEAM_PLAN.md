@@ -7,7 +7,7 @@ Group 13 · Software Engineering, Fall 2026
 | Member | Branch | Owns |
 | --- | --- | --- |
 | Anish Shirodkar | `anish` | Repo setup, UI foundation (theme, shared components, layout), real-time messaging |
-| Krisha Borana | `krisha` | Sign-in and accounts (test login, then NetID) |
+| Krisha Borana | `krisha` | Sign-in and accounts (Rutgers email/password and protected routes) |
 | Anuj Bohra | `anuj` | Listings and photo upload |
 | Aryan Nagwekar | `aryan` | Feed, search and filters |
 | Kunal Pasad | `kunal` | Flagging and admin review queue |
@@ -32,7 +32,7 @@ Each person builds their feature end to end (pages, API, data model, tests) and 
 | Backend + chat | Express + Socket.IO on Render |
 | Database | MongoDB Atlas |
 | Photos | Cloudinary |
-| Sign-in | Rutgers NetID (CAS) |
+| Sign-in | Rutgers-domain email and password |
 | CI | GitHub Actions |
 
 
@@ -53,5 +53,5 @@ Each person builds their feature end to end (pages, API, data model, tests) and 
 | --- | --- | --- |
 | Design | Oct 12–23 | Requirements, wireframes, schema |
 | Core build | Oct 26–Nov 13 | Login, listings, feed, search, UI, deployment |
-| Features | Nov 16–27 | Chat, moderation, favorites, notifications, NetID |
+| Features | Nov 16–27 | Chat, moderation, favorites, notifications |
 | Test and demo | Nov 30–Dec 4 | Testing, fixes, final report, final demo |

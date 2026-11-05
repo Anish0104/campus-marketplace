@@ -7,7 +7,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { initials } from "@/lib/format";
 import RelativeTime from "@/components/RelativeTime";
-import { userName } from "@/lib/devUsers";
 import type { Conversation } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
 
@@ -22,8 +21,7 @@ export default function ConversationList({ conversations, currentUserId, selecte
   return (
     <List disablePadding aria-label="Conversations">
       {conversations.map((c) => {
-        const otherId = c.buyer === currentUserId ? c.seller : c.buyer;
-        const name = userName(otherId);
+        const name = "Rutgers student";
         const preview = c.lastMessage
           ? `${c.lastMessage.sender === currentUserId ? "You: " : ""}${c.lastMessage.body}`
           : "No messages yet";

@@ -14,7 +14,7 @@ import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import DevUserSwitcher from "./DevUserSwitcher";
+import { useCurrentUser } from "./CurrentUserProvider";
 import { tokens } from "@/theme/tokens";
 
 const NAV = [
@@ -25,6 +25,7 @@ const NAV = [
 /** Top navigation shown on every page (rendered in app/layout.tsx). */
 export default function AppHeader() {
   const pathname = usePathname();
+  const { user, loading, logout } = useCurrentUser();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
@@ -86,9 +87,16 @@ export default function AppHeader() {
             ))}
           </Stack>
 
-          <Box sx={{ display: { xs: "none", sm: "block" } }}>
-            <DevUserSwitcher />
-          </Box>
+          {!loading && user ? (
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <Typography variant="body2" sx={{ display: { xs: "none", sm: "block" }, color: tokens.muted }}>
+                {user.name}
+              </Typography>
+              <Button color="inherit" onClick={() => void logout()}>Sign out</Button>
+            </Stack>
+          ) : !loading ? (
+            <Button component={Link} href="/login" color="inherit">Sign in</Button>
+          ) : null}
 
           <Button
             component={Link}

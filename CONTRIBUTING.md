@@ -55,15 +55,14 @@ Open http://localhost:3000/ui to see every shared component. Use them instead of
 
 Buttons, text fields and alerts come straight from MUI. The theme already styles them.
 
-## Signed-in user (temporary)
+## Signed-in user
 
-Until sign-in is ready, the header has a **Test account** switcher.
-
-- Client: `const { user } = useCurrentUser()` gives `{ id, name }`.
-- API calls: `apiFetch(path, { userId: user.id })` sends the `x-user-id` header.
-- Server: put `requireUser` on a router, then read `req.userId`.
-
-When real sign-in lands, only `CurrentUserProvider`, `requireUser` and the socket check change. Your code stays the same.
+The client uses `CurrentUserProvider` to expose the account returned by
+`GET /api/auth/me`. Login and signup establish a server-side session; `apiFetch`
+includes the same-origin session cookie with API requests. On protected server
+routes, use `requireUser` and read the authenticated ID from `req.userId`.
+`x-user-id` is accepted only in the isolated test environment; browser code must
+never set it.
 
 ## Rules
 

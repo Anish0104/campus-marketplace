@@ -7,6 +7,7 @@ import request from "supertest";
 import { io as connectClient, type Socket } from "socket.io-client";
 import { createApp } from "../src/app";
 import { initSocket } from "../src/socket";
+import { User } from "../src/models/User";
 
 // These tests need MongoDB. Locally: `docker compose up -d` in the repo root.
 const TEST_DB =
@@ -140,8 +141,12 @@ describe("real-time delivery", () => {
     await new Promise((resolve) => httpServer.close(resolve));
   });
 
-  function connectAs(userId: string) {
-    const socket = connectClient(baseUrl, { auth: { userId }, transports: ["websocket"] });
+  async function connectAs(userId: string) {
+    const ticketResponse = await request(baseUrl)
+      .post("/api/auth/socket-ticket")
+      .set(as(userId));
+    if (ticketResponse.status !== 200) throw new Error(ticketResponse.body.error ?? "Could not get socket ticket.");
+    const socket = connectClient(baseUrl, { auth: { ticket: ticketResponse.body.ticket }, transports: ["websocket"] });
     sockets.push(socket);
     return new Promise<Socket>((resolve, reject) => {
       socket.on("connect", () => resolve(socket));
@@ -151,6 +156,10 @@ describe("real-time delivery", () => {
 
   it("pushes a new message to the recipient instantly", async (t) => {
     if (!dbReady) return t.skip("no MongoDB");
+    await User.create([
+      { _id: alex, netId: "socket-alex", name: "Alex Student" },
+      { _id: sam, netId: "socket-sam", name: "Sam Student" },
+    ]);
     const samSocket = await connectAs(sam);
     const received = new Promise<{ message: { body: string } }>((resolve) =>
       samSocket.on("message:new", resolve)

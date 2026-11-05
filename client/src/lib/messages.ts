@@ -3,8 +3,8 @@ import type { Conversation, Message } from "./types";
 
 export const MESSAGE_MAX_LENGTH = 1000;
 
-export const listConversations = (userId: string) =>
-  apiFetch<Conversation[]>("/api/conversations", { userId });
+export const listConversations = () =>
+  apiFetch<Conversation[]>("/api/conversations");
 
 /**
  * Opens the conversation with a seller about a listing, creating it if needed.
@@ -12,16 +12,14 @@ export const listConversations = (userId: string) =>
  * `/messages?c=<conversation id>`.
  */
 export const startConversation = (
-  userId: string,
   listing: { listingId: string; sellerId: string; listingTitle: string }
-) => apiFetch<Conversation>("/api/conversations", { method: "POST", body: listing, userId });
+) => apiFetch<Conversation>("/api/conversations", { method: "POST", body: listing });
 
-export const listMessages = (userId: string, conversationId: string) =>
-  apiFetch<Message[]>(`/api/conversations/${conversationId}/messages`, { userId });
+export const listMessages = (conversationId: string) =>
+  apiFetch<Message[]>(`/api/conversations/${conversationId}/messages`);
 
-export const sendMessage = (userId: string, conversationId: string, body: string) =>
+export const sendMessage = (conversationId: string, body: string) =>
   apiFetch<Message>(`/api/conversations/${conversationId}/messages`, {
     method: "POST",
     body: { body },
-    userId,
   });

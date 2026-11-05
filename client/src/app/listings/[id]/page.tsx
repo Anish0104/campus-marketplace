@@ -7,6 +7,7 @@ import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Paper,
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import PageHeader from "@/components/PageHeader";
+import AuthGate from "@/components/AuthGate";
 import PriceTag from "@/components/PriceTag";
 import ConditionChip from "@/components/ConditionChip";
 import EmptyState from "@/components/EmptyState";
@@ -18,7 +19,7 @@ import { tokens } from "@/theme/tokens";
 type Result = { key: string; listing?: Listing; error?: ApiError };
 
 export default function ListingDetailPage() {
-  return <Suspense fallback={<CircularProgress aria-label="Loading listing" />}><ListingDetail /></Suspense>;
+  return <Suspense fallback={<CircularProgress aria-label="Loading listing" />}><AuthGate><ListingDetail /></AuthGate></Suspense>;
 }
 
 function ListingDetail() {
@@ -33,7 +34,7 @@ function ListingDetail() {
   useEffect(() => {
     if (!userId || !validId) return;
     const controller = new AbortController();
-    getListing(userId, id, controller.signal)
+    getListing(id, controller.signal)
       .then((listing) => { if (!controller.signal.aborted) setResult({ key, listing }); })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setResult({ key, error: error instanceof ApiError ? error : new ApiError("Couldn't load this listing. Please try again.", 0) });
@@ -42,12 +43,12 @@ function ListingDetail() {
   }, [userId, id, key, validId]);
 
   const actions = <Button component={Link} href="/listings/new" variant="outlined">Sell an item</Button>;
-  if (!user) return <><PageHeader title="Listing details" /><EmptyState title="Sign in to view this listing" description="Select a test account or sign in, then open this listing again." /></>;
+  if (!user) return <><PageHeader title="Listing details" /><EmptyState title="Sign in to view this listing" description="Sign in with your Rutgers email and password, then open this listing again." /></>;
   if (!validId) return <><PageHeader title="Invalid listing link" /><Alert severity="error">The listing ID must contain 24 hexadecimal characters. Check the link and try again.</Alert></>;
   const current = result?.key === key ? result : null;
   if (!current) return <><PageHeader title="Listing details" /><Stack role="status" sx={{ alignItems: "center", py: 8 }} spacing={2}><CircularProgress aria-label="Loading listing" /><Typography>Loading listing…</Typography></Stack></>;
   if (current.error?.status === 404) return <><PageHeader title="Listing not found" /><EmptyState title="This listing isn't available" description="It may have been removed, or the link may be incorrect." action={actions} /></>;
-  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Select a test account or sign in to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
+  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Sign in with your Rutgers email and password to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
   const listing = current.listing!;
   return (
     <>

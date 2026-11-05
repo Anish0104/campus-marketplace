@@ -21,7 +21,7 @@ import { toListingSummary } from "@/lib/listings";
 import type { FeedCategory, FeedPage } from "@/lib/types";
 
 // Each result remembers which request it answers, so a slow old response
-// never shows up after the filters or test account have changed.
+// never shows up after the filters or signed-in user have changed.
 type FeedResult = { key: string; data?: FeedPage; error?: ApiError };
 
 const subscribeToHydration = () => () => {};
@@ -48,7 +48,7 @@ export default function FeedView() {
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
-    getFeed(userId, filters, controller.signal)
+    getFeed(filters, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setResult({ key, data }); })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -61,7 +61,7 @@ export default function FeedView() {
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
-    getFeedCategories(userId, controller.signal)
+    getFeedCategories(controller.signal)
       .then((list) => { if (!controller.signal.aborted) setCategories({ userId, list }); })
       .catch(() => {});
     return () => controller.abort();
@@ -84,7 +84,7 @@ export default function FeedView() {
       <EmptyState
         icon={<StorefrontOutlinedIcon />}
         title="Sign in to browse listings"
-        description="The marketplace is for Rutgers students only. Sign in, or pick a test account in the header."
+        description="The marketplace is for Rutgers students only. Sign in with your Rutgers email and password to continue."
       />
     );
   }

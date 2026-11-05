@@ -73,12 +73,12 @@ export function isValidPrice(value: string) {
   return value === "" || PRICE.test(value.trim());
 }
 
-export function getFeed(userId: string, filters: FeedFilters, signal?: AbortSignal) {
+export function getFeed(filters: FeedFilters, signal?: AbortSignal) {
   const query = filtersToQuery(filters);
-  return apiFetch<FeedPage>(`/api/listings${query ? `?${query}` : ""}`, { userId, signal });
+  return apiFetch<FeedPage>(`/api/listings${query ? `?${query}` : ""}`, { signal });
 }
 
-export async function getFeedCategories(userId: string, signal?: AbortSignal) {
-  const { categories } = await apiFetch<{ categories: FeedCategory[] }>("/api/listings/categories", { userId, signal });
+export async function getFeedCategories(signal?: AbortSignal) {
+  const { categories } = await apiFetch<{ categories: FeedCategory[] }>("/api/listings/categories", { signal });
   return categories;
 }

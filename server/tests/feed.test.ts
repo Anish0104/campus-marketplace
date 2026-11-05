@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { Listing } from "../src/models/Listing";
+import { User } from "../src/models/User";
 import { removeSampleListings, SAMPLE_COUNT, sampleId, seedSampleListings } from "../src/seed/sampleListings";
 import { buildFeedFilter, buildFeedSort, parseFeedQuery, toTextSearch } from "../src/services/feedQuery";
 
@@ -27,6 +28,7 @@ before(async () => {
 beforeEach(async () => { if (dbReady) await Listing.deleteMany({}); });
 after(async () => {
   if (dbReady) await Listing.deleteMany({});
+  if (dbReady) await User.deleteMany({ email: { $in: ["krisha.borana@rutgers.edu", "kunal.pasad@rutgers.edu", "anuj.bohra@rutgers.edu"] } });
   await mongoose.disconnect();
 });
 
@@ -271,12 +273,21 @@ describe("sample listings seed", () => {
   it("is safe to run twice and only removes its own listings", async (t) => {
     if (!dbReady) return t.skip("no MongoDB");
     const [mine] = await insert({ title: "A real student's listing" });
+    await User.deleteMany({ email: { $in: ["krisha.borana@rutgers.edu", "kunal.pasad@rutgers.edu", "anuj.bohra@rutgers.edu"] } });
+    const sellers = await User.create([
+      { netId: "seed-test-krisha", name: "Krisha Borana", email: "krisha.borana@rutgers.edu", role: "student", suspended: false },
+      { netId: "seed-test-kunal", name: "Kunal Pasad", email: "kunal.pasad@rutgers.edu", role: "student", suspended: false },
+      { netId: "seed-test-anuj", name: "Anuj Bohra", email: "anuj.bohra@rutgers.edu", role: "student", suspended: false },
+    ]);
     const first = await seedSampleListings();
     assert.equal(first.inserted, SAMPLE_COUNT);
     const second = await seedSampleListings();
     assert.equal(second.inserted, 0);
     assert.equal(await Listing.countDocuments(), SAMPLE_COUNT + 1);
     assert.ok(await Listing.exists({ _id: sampleId(0) }));
+    const sampleListings = await Listing.find({ _id: { $in: Array.from({ length: SAMPLE_COUNT }, (_, i) => sampleId(i)) } }).lean();
+    assert.ok(sampleListings.every((listing) => listing.photos.length === 1 && listing.photos[0].startsWith("https://images.unsplash.com/")));
+    assert.ok(sampleListings.every((listing) => sellers.some((user) => String(user._id) === String(listing.seller))));
 
     const res = await feed("?limit=50");
     assert.ok(res.body.listings.every((l: { status: string }) => l.status === "active"));

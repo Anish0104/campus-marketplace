@@ -41,13 +41,19 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Optional: fill the feed with 30 sample listings (`npm run seed:listings` in `server/`).
+The local client proxies `/api` requests to `API_SERVER_URL` so the session cookie
+stays first-party in the browser. Create an account with an `@rutgers.edu` or
+`@scarletmail.rutgers.edu` address at `/signup`, then sign in at `/login`.
+Registration checks the email domain but does not verify inbox ownership.
+See [Authentication](docs/AUTH.md).
+
+Optional: fill the feed with sample listings (`npm run seed:listings` in `server/`).
 
 Then open:
 
 - http://localhost:3000 for the feed. Search, filter by category, condition and price, and sort
 - http://localhost:3000/ui for the shared components
-- http://localhost:3000/messages for chat. Click **Start a test conversation**, then open a second browser window, switch **Test account** to Sam Okafor, and reply. Messages appear in both windows instantly.
+- http://localhost:3000/messages for chat. Messaging requires a signed-in account and an existing conversation.
 
 ## Useful commands
 
@@ -83,7 +89,7 @@ server/
 | Member | Owns |
 | --- | --- |
 | Anish Shirodkar | Repo setup (structure, CI, Docker, team workflow) · UI foundation (wireframes, theme, shared components, responsive layout) · Real-time messaging (Socket.IO chat, inbox, conversations per listing) |
-| Krisha Borana | Sign-in and accounts (NetID login, sessions, protected routes) |
+| Krisha Borana | Sign-in and accounts (Rutgers email/password, sessions, protected routes) |
 | Anuj Bohra | Listings (create, edit, delete, mark sold, photo upload) |
 | Aryan Nagwekar | Feed and search (keyword search, filters) |
 | Kunal Pasad | Moderation (flagging, admin review queue) |

@@ -17,6 +17,9 @@ export type ListingSummary = {
 export type User = {
   id: string;
   name: string;
+  netId?: string;
+  email?: string;
+  role?: "student" | "admin";
 };
 
 export type Conversation = {
