@@ -7,6 +7,7 @@ export const USER_LIMITS = { netId: 32, name: 120, email: 254 };
 
 const userSchema = new Schema(
   {
+    username: { type: String, trim: true, lowercase: true, maxlength: 32 },
     netId: {
       type: String,
       trim: true,
@@ -27,6 +28,7 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
+userSchema.index({ username: 1 }, { unique: true, sparse: true });
 userSchema.index({ netId: 1 }, { unique: true, sparse: true });
 userSchema.index({ email: 1 }, { unique: true, sparse: true });
 

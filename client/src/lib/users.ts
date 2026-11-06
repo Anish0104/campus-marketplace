@@ -1,8 +1,8 @@
 import { apiFetch } from "./api";
 import type { PublicProfile } from "./types";
 
-export function getProfile(userId: string, id: string, signal?: AbortSignal) {
-  return apiFetch<PublicProfile>(`/api/users/${encodeURIComponent(id)}`, { userId, signal });
+export function getProfile(id: string, signal?: AbortSignal) {
+  return apiFetch<PublicProfile>(`/api/users/${encodeURIComponent(id)}`, { signal });
 }
 
 /** "November 2026". Fixed to UTC so the server render and the browser agree. */

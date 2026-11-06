@@ -17,6 +17,10 @@ export type ListingSummary = {
 export type User = {
   id: string;
   name: string;
+  netId?: string;
+  username?: string;
+  email?: string;
+  role?: "student" | "admin";
 };
 
 export type Conversation = {
@@ -92,3 +96,6 @@ export type ListingPhotoUpload = {
   expiresAt: string;
   photos: { url: string; publicId: string }[];
 };
+
+export type ManagedUser = User & { _id: string; suspended: boolean };
+export type MarketplaceRules = { content: string; updatedAt: string | null };

@@ -1,5 +1,5 @@
 import { io, type Socket } from "socket.io-client";
-import { API_URL } from "./api";
+import { apiFetch, SOCKET_URL } from "./api";
 
 let socket: Socket | null = null;
 let socketUserId: string | null = null;
@@ -8,7 +8,21 @@ let socketUserId: string | null = null;
 export function getSocket(userId: string) {
   if (socket && socketUserId === userId) return socket;
   socket?.disconnect();
-  socket = io(API_URL, { auth: { userId } });
+  socket = io(SOCKET_URL, {
+    autoConnect: false,
+    auth: (callback) => {
+      void apiFetch<{ ticket: string }>("/api/auth/socket-ticket", { method: "POST" })
+        .then(({ ticket }) => callback({ ticket }))
+        .catch(() => callback({ ticket: "" }));
+    },
+  });
   socketUserId = userId;
+  socket.connect();
   return socket;
+}
+
+export function disconnectSocket() {
+  socket?.disconnect();
+  socket = null;
+  socketUserId = null;
 }

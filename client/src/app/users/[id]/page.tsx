@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Alert, Avatar, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
+import AuthGate from "@/components/AuthGate";
 import EmptyState from "@/components/EmptyState";
 import ListingGrid from "@/components/ListingGrid";
 import LoadingGrid from "@/components/LoadingGrid";
@@ -23,7 +24,7 @@ type Result = { key: string; profile?: PublicProfile; error?: ApiError };
 export default function ProfilePage() {
   return (
     <Suspense fallback={<LoadingGrid />}>
-      <Profile />
+      <AuthGate><Profile /></AuthGate>
     </Suspense>
   );
 }
@@ -40,7 +41,7 @@ function Profile() {
   useEffect(() => {
     if (!userId || !validId) return;
     const controller = new AbortController();
-    getProfile(userId, id, controller.signal)
+    getProfile(id, controller.signal)
       .then((profile) => { if (!controller.signal.aborted) setResult({ key, profile }); })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -51,7 +52,7 @@ function Profile() {
 
   const browse = <Button component={Link} href="/" variant="outlined">Browse listings</Button>;
   if (!user) {
-    return <><PageHeader title="Profile" /><EmptyState title="Sign in to view profiles" description="Select a test account or sign in, then open this profile again." /></>;
+    return <><PageHeader title="Profile" /><EmptyState title="Sign in to view profiles" description="Sign in with your Rutgers account, then open this profile again." /></>;
   }
   if (!validId) {
     return <><PageHeader title="Invalid profile link" /><Alert severity="error">The profile ID must contain 24 hexadecimal characters. Check the link and try again.</Alert></>;
@@ -68,7 +69,7 @@ function Profile() {
       <>
         <PageHeader title="Couldn't load profile" />
         <Alert severity="error" sx={{ mb: 2 }}>
-          {current.error.message}{current.error.status === 401 ? " Select a test account or sign in to continue." : " Check your connection and try again."}
+          {current.error.message}{current.error.status === 401 ? " Sign in with your Rutgers account to continue." : " Check your connection and try again."}
         </Alert>
         <Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button>
       </>

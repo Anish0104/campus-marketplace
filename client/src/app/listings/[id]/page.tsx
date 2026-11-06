@@ -31,9 +31,9 @@ function ListingDetail() {
   const validId = /^[a-f\d]{24}$/i.test(id);
 
   useEffect(() => {
-    if (!userId || !validId) return;
+    if (!validId) return;
     const controller = new AbortController();
-    getListing(userId, id, controller.signal)
+    getListing(id, controller.signal)
       .then((listing) => { if (!controller.signal.aborted) setResult({ key, listing }); })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setResult({ key, error: error instanceof ApiError ? error : new ApiError("Couldn't load this listing. Please try again.", 0) });
@@ -42,12 +42,11 @@ function ListingDetail() {
   }, [userId, id, key, validId]);
 
   const actions = <Button component={Link} href="/listings/new" variant="outlined">Sell an item</Button>;
-  if (!user) return <><PageHeader title="Listing details" /><EmptyState title="Sign in to view this listing" description="Select a test account or sign in, then open this listing again." /></>;
   if (!validId) return <><PageHeader title="Invalid listing link" /><Alert severity="error">The listing ID must contain 24 hexadecimal characters. Check the link and try again.</Alert></>;
   const current = result?.key === key ? result : null;
   if (!current) return <><PageHeader title="Listing details" /><Stack role="status" sx={{ alignItems: "center", py: 8 }} spacing={2}><CircularProgress aria-label="Loading listing" /><Typography>Loading listing…</Typography></Stack></>;
   if (current.error?.status === 404) return <><PageHeader title="Listing not found" /><EmptyState title="This listing isn't available" description="It may have been removed, or the link may be incorrect." action={actions} /></>;
-  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Select a test account or sign in to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
+  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Sign in with your Rutgers email and password to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
   const listing = current.listing!;
   return (
     <>
@@ -64,9 +63,10 @@ function ListingDetail() {
             {listing.status !== "active" && <Alert severity="info">This listing is {listing.status} and is no longer available.</Alert>}
             <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: 2, rowGap: 1.5, "& dd": { m: 0, overflowWrap: "anywhere" }, "& dt": { color: "text.secondary" } }}>
               <Typography component="dt">Category</Typography><Typography component="dd">{listing.category}</Typography>
-              <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
+              <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user?.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
               <Typography component="dt">Listed</Typography><Typography component="dd"><time dateTime={listing.createdAt}>{new Date(listing.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></Typography>
             </Box>
+            {!user && <Alert severity="info">Browsing as a viewer. <Link href={`/login?returnTo=${encodeURIComponent(`/listings/${id}`)}`}>Sign in</Link> to participate in the marketplace.</Alert>}
             <Divider />
             <Typography variant="h4" component="h2">Description</Typography>
             <Typography sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{listing.description}</Typography>

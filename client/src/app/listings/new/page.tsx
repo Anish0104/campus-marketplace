@@ -7,6 +7,7 @@ import { Alert, Box, Button, CircularProgress, Divider, MenuItem, Paper, Stack, 
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import PageHeader from "@/components/PageHeader";
+import AuthGate from "@/components/AuthGate";
 import { CONDITION_LABELS } from "@/components/ConditionChip";
 import { ApiError } from "@/lib/api";
 import { createListing, LISTING_LIMITS, PHOTO_TYPES, uploadListingPhotos } from "@/lib/listings";
@@ -28,7 +29,11 @@ export default function NewListingPage() {
     router.push(`/listings/${id}`);
   }
 
-  return <NewListingForm key={`${user?.id ?? "signed-out"}:${formVersion}`} userId={user?.id} onCreated={handleCreated} />;
+  return (
+    <AuthGate>
+      <NewListingForm key={`${user?.id ?? "signed-out"}:${formVersion}`} userId={user?.id} onCreated={handleCreated} />
+    </AuthGate>
+  );
 }
 
 function NewListingForm({ userId, onCreated }: { userId?: string; onCreated: (id: string) => void }) {
@@ -123,13 +128,13 @@ function NewListingForm({ userId, onCreated }: { userId?: string; onCreated: (id
       let photoUploadId: string | undefined;
       if (photos.length) {
         setPhase("uploading");
-        const uploaded = await uploadListingPhotos(userId, photos.map((photo) => photo.file));
+        const uploaded = await uploadListingPhotos(photos.map((photo) => photo.file));
         if (!mounted.current) return;
         if (Date.parse(uploaded.expiresAt) <= Date.now()) throw new ApiError("The photo upload expired. Submit again to upload fresh photos.", 400);
         photoUploadId = uploaded.photoUploadId;
       }
       setPhase("creating");
-      const listing = await createListing(userId, {
+      const listing = await createListing({
         title: fields.title.trim(), description: fields.description.trim(), price,
         category: fields.category.trim(), condition: fields.condition as Condition,
         ...(photoUploadId ? { photoUploadId } : {}),
@@ -140,7 +145,7 @@ function NewListingForm({ userId, onCreated }: { userId?: string; onCreated: (id
       if (!mounted.current) return;
       const message = cause instanceof Error ? cause.message : "Something went wrong.";
       const hint = cause instanceof ApiError && cause.status === 401
-        ? " Select a test account or sign in, then try again."
+        ? " Sign in with your Rutgers email and password, then try again."
         : cause instanceof ApiError && cause.status === 0
           ? " Your request may have reached the server; check before submitting again."
           : " Your form is preserved. Check the fields and photos, then submit again; selected photos will be uploaded afresh.";
@@ -153,7 +158,7 @@ function NewListingForm({ userId, onCreated }: { userId?: string; onCreated: (id
   return (
     <>
       <PageHeader title="New listing" description="Give something a second home on campus." />
-      {!userId && <Alert severity="info" sx={{ mb: 2 }}>Sign in or select a test account to create a listing.</Alert>}
+      {!userId && <Alert severity="info" sx={{ mb: 2 }}>Sign in with your Rutgers email and password to create a listing.</Alert>}
       <Box component="form" noValidate onSubmit={submit} aria-busy={busy} sx={{ maxWidth: 840 }}>
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
           <Stack spacing={3}>

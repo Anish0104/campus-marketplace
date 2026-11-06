@@ -1,20 +1,18 @@
 import { Router } from "express";
-import { requireUser } from "../middleware/requireUser";
 import { Listing } from "../models/Listing";
 import { buildFeedFilter, buildFeedSort, parseFeedQuery } from "../services/feedQuery";
 
 /**
  * Feed, search and filters (Aryan). Mounted at /api/listings before the
  * listings router so "/categories" is not mistaken for a listing id.
- * requireUser is applied per route, not with router.use, so requests for
- * other listing routes pass straight through to the listings router.
+ * Public read-only routes; listing mutations retain their authentication checks.
  */
 export const feedRouter = Router();
 
 // The feed only needs what a listing card shows, so the description is left out.
 const FEED_FIELDS = "title price category condition photos seller status createdAt updatedAt";
 
-feedRouter.get("/", requireUser, async (req, res) => {
+feedRouter.get("/", async (req, res) => {
   const parsed = parseFeedQuery(req.query as Record<string, unknown>);
   if (!parsed.ok) {
     res.status(400).json({ error: parsed.error });
@@ -41,7 +39,7 @@ feedRouter.get("/", requireUser, async (req, res) => {
 });
 
 /** Categories that currently have active listings, for the filter menu. */
-feedRouter.get("/categories", requireUser, async (_req, res) => {
+feedRouter.get("/categories", async (_req, res) => {
   // Category is free text, so "Books" and "books" are grouped under one name.
   const groups = await Listing.aggregate<{ name: string; count: number }>([
     { $match: { status: "active" } },

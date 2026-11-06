@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -18,8 +17,7 @@ import PageHeader from "@/components/PageHeader";
 import ChatThread from "./ChatThread";
 import ConversationList from "./ConversationList";
 import MessageComposer from "./MessageComposer";
-import { DEV_LOGIN_ENABLED, DEV_USERS, userName } from "@/lib/devUsers";
-import { listConversations, listMessages, sendMessage, startConversation } from "@/lib/messages";
+import { listConversations, listMessages, sendMessage } from "@/lib/messages";
 import { getSocket } from "@/lib/socket";
 import type { Conversation, Message } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
@@ -67,7 +65,7 @@ export default function MessagesView() {
   // Load the inbox whenever the signed-in user changes.
   useEffect(() => {
     if (!user) return;
-    listConversations(user.id)
+    listConversations()
       .then((list) => setInbox({ userId: user.id, list }))
       .catch((e: Error) => {
         setInbox({ userId: user.id, list: [] });
@@ -78,7 +76,7 @@ export default function MessagesView() {
   // Load the open conversation's messages.
   useEffect(() => {
     if (!user || !selectedId) return;
-    listMessages(user.id, selectedId)
+    listMessages(selectedId)
       .then((list) => setThread({ conversationId: selectedId, list }))
       .catch((e: Error) => setError(e.message));
   }, [user, selectedId]);
@@ -101,27 +99,10 @@ export default function MessagesView() {
     if (!user || !selectedId) return;
     setError(null);
     try {
-      addMessage(await sendMessage(user.id, selectedId, body));
+      addMessage(await sendMessage(selectedId, body));
     } catch (e) {
       setError((e as Error).message);
       throw e; // keep the text in the box so nothing is lost
-    }
-  }
-
-  // TEMPORARY: lets the team try chat before listings exist.
-  async function startTestConversation() {
-    if (!user) return;
-    const seller = DEV_USERS.find((u) => u.id !== user.id)!;
-    try {
-      const convo = await startConversation(user.id, {
-        listingId: "65a000000000000000000001",
-        sellerId: seller.id,
-        listingTitle: "Calculus textbook, 9th edition",
-      });
-      setConversations((list) => upsertConversation(list, convo));
-      select(convo._id);
-    } catch (e) {
-      setError((e as Error).message);
     }
   }
 
@@ -130,7 +111,7 @@ export default function MessagesView() {
   }
 
   const selected = conversations?.find((c) => c._id === selectedId) ?? null;
-  const otherName = selected ? userName(selected.buyer === user.id ? selected.seller : selected.buyer) : "";
+  const otherName = selected ? "Rutgers student" : "";
 
   return (
     <>
@@ -151,13 +132,6 @@ export default function MessagesView() {
           icon={<ChatBubbleOutlineIcon />}
           title="No conversations yet"
           description="Message a seller from any listing and the conversation shows up here."
-          action={
-            DEV_LOGIN_ENABLED ? (
-              <Button variant="outlined" onClick={startTestConversation}>
-                Start a test conversation
-              </Button>
-            ) : undefined
-          }
         />
       ) : (
         <Paper
