@@ -13,7 +13,8 @@
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "photos:cleanup": "tsx src/scripts/cleanupListingPhotos.ts",
-    "seed:listings": "tsx src/scripts/seedListings.ts"
+    "seed:listings": "tsx src/scripts/seedListings.ts",
+    "seed:profiles": "tsx src/scripts/seedDevProfiles.ts"
   },
   "dependencies": {
     "cloudinary": "^2.11.0",
