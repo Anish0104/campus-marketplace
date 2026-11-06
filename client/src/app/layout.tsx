@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>
+      {/* Browser extensions (e.g. Grammarly) add attributes to <body>; ignore that mismatch. */}
+      <body suppressHydrationWarning>
         <Providers>
           <Suspense fallback={null}>
             <AppHeader />

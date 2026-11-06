@@ -29,6 +29,8 @@ export type Conversation = {
   listingTitle: string;
   buyer: string;
   seller: string;
+  buyerName?: string;
+  sellerName?: string;
   lastMessage?: { body: string; sender: string; sentAt: string };
   updatedAt: string;
 };
