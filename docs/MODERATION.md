@@ -43,21 +43,18 @@ listing detail.
 
 ## User fields moderation depends on
 
-`server/src/models/User.ts` is **Krisha's model**. A minimal version was written on
-the `kunal` branch so moderation had something to reference and test against; if
-Krisha's version differs, hers wins. Only the fields other features already depend on
-are defined: `netId`, `name`, `email`, `role` and `suspended`. Sign-in, sessions and
-CAS handling are deliberately absent.
+`server/src/models/User.ts` is Krisha's model, merged to `main` in PR #6.
+Moderation reads two of its fields:
 
-- `role`: `student` or `admin`, defaulting to `student`. Krisha's `requireAdmin` and
-  the admin queue both read it.
-- `suspended`: boolean, defaulting to `false`. This is the existing contract in
-  `server/src/services/suspension.ts`, which already returns `false` for everyone
-  while no `User` model is registered. Kunal sets the flag; Krisha blocks sign-in;
-  Anish blocks messaging.
+- `role`: `student` or `admin`, defaulting to `student`. Krisha's `requireAdmin`
+  and the admin queue both read it.
+- `suspended`: boolean, defaulting to `false`. This is the contract in
+  `server/src/services/suspension.ts`. Kunal sets the flag; Krisha blocks
+  sign-in; Anish blocks messaging.
 
-`netId` and `email` are both unique and lowercased on write, so `CD5678` and `cd5678`
-cannot both exist.
+`netId`, `username` and `email` are each optional with a **sparse** unique index,
+because an account may authenticate by NetID or by password but not necessarily
+both. Code that looks a user up by `netId` must handle the field being absent.
 
 ## Admin actions
 
@@ -90,4 +87,16 @@ Covered: stored fields and trimming, the empty-note default, `targetModel` deriv
 including a caller trying to override it, `populate` through `refPath`, every enum
 rejection, missing required fields, the note length limit, the duplicate-flag rule
 and the two cases it must still allow, admin queue ordering, resolution bookkeeping,
-`User` defaults and lowercasing, and agreement with `isSuspended` in both states.
+`User` defaults and lowercasing, sparse-index behaviour when `netId` is absent, and
+agreement with `isSuspended` in both states. 16 tests, all passing.
+
+### Known failures elsewhere
+
+As of Nov 6, several suites on `main` fail because they still send the temporary
+`x-user-id` header and now get 401 from Krisha's real authentication:
+`listings` (25), `listingPhotos` (22), `conversations` (11), `profile` (7), `auth`
+(1) and `feed` (1). These reproduce on a clean checkout of `origin/main` and are not
+caused by the moderation branch; they belong to the features that own those suites.
+
+Run the suites one file at a time (`npx tsx --test tests/<name>.test.ts`). Running
+all of them in one process can exhaust memory and be killed.
