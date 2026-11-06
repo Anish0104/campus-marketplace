@@ -2,11 +2,25 @@ import { Router } from "express";
 import { isValidObjectId } from "mongoose";
 import type { Server } from "socket.io";
 import { requireUser } from "../middleware/requireUser";
-import { Conversation, isParticipant, otherParticipant } from "../models/Conversation";
+import { Conversation, isParticipant, otherParticipant, type ConversationDoc } from "../models/Conversation";
+import { Listing } from "../models/Listing";
+import { User } from "../models/User";
 import { Message, MESSAGE_MAX_LENGTH } from "../models/Message";
 import { isSuspended } from "../services/suspension";
 
 export const conversationsRouter = Router();
+
+/** Adds buyerName and sellerName so the inbox can show who each chat is with. */
+async function withNames(conversations: ConversationDoc[]) {
+  const ids = [...new Set(conversations.flatMap((c) => [String(c.buyer), String(c.seller)]))];
+  const users = await User.find({ _id: { $in: ids } }).select("name").lean();
+  const names = new Map(users.map((u) => [String(u._id), u.name]));
+  return conversations.map((c) => ({
+    ...c.toJSON(),
+    buyerName: names.get(String(c.buyer)) ?? "Rutgers student",
+    sellerName: names.get(String(c.seller)) ?? "Rutgers student",
+  }));
+}
 
 conversationsRouter.use(requireUser);
 
@@ -17,43 +31,53 @@ conversationsRouter.get("/", async (req, res) => {
   })
     .sort({ updatedAt: -1 })
     .limit(100);
-  res.json(conversations);
+  res.json(await withNames(conversations));
 });
 
 // POST /api/conversations: start (or reopen) a conversation about a listing.
-// Body: { listingId, sellerId, listingTitle }
-// TODO (Anuj): once the Listing model exists, read sellerId and title from the
-// listing instead of trusting the request body.
+// Body: { listingId }. The seller and title come from the listing itself,
+// never from the request, so nobody can open a chat in someone else's name.
 conversationsRouter.post("/", async (req, res) => {
-  const { listingId, sellerId, listingTitle } = req.body ?? {};
+  const { listingId } = req.body ?? {};
   const buyerId = req.userId!;
 
-  if (!isValidObjectId(listingId) || !isValidObjectId(sellerId)) {
-    res.status(400).json({ error: "listingId and sellerId must be valid ids." });
+  if (!isValidObjectId(listingId)) {
+    res.status(400).json({ error: "listingId must be a valid id." });
     return;
   }
-  if (typeof listingTitle !== "string" || !listingTitle.trim()) {
-    res.status(400).json({ error: "listingTitle is required." });
+
+  const listing = await Listing.findById(listingId).select("seller title status");
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found." });
     return;
   }
-  if (String(sellerId) === buyerId) {
+  if (listing.seller.equals(buyerId)) {
     res.status(400).json({ error: "You can't message yourself about your own listing." });
     return;
   }
 
-  const existing = await Conversation.findOne({ listing: listingId, buyer: buyerId });
+  const existing = await Conversation.findOne({ listing: listing._id, buyer: buyerId });
   if (existing) {
-    res.status(200).json(existing);
+    res.status(200).json((await withNames([existing]))[0]);
+    return;
+  }
+
+  if (listing.status !== "active") {
+    res.status(400).json({ error: "This listing is no longer available." });
+    return;
+  }
+  if (await isSuspended(listing.seller)) {
+    res.status(403).json({ error: "This user's account is suspended." });
     return;
   }
 
   const conversation = await Conversation.create({
-    listing: listingId,
-    listingTitle: listingTitle.trim().slice(0, 120),
+    listing: listing._id,
+    listingTitle: listing.title.slice(0, 120),
     buyer: buyerId,
-    seller: sellerId,
+    seller: listing.seller,
   });
-  res.status(201).json(conversation);
+  res.status(201).json((await withNames([conversation]))[0]);
 });
 
 // Loads a conversation the signed-in user takes part in, or sends 404.
@@ -119,7 +143,7 @@ conversationsRouter.post("/:id/messages", async (req, res) => {
   const io: Server | undefined = req.app.get("io");
   io?.to(`user:${senderId}`)
     .to(`user:${recipientId}`)
-    .emit("message:new", { message, conversation });
+    .emit("message:new", { message, conversation: (await withNames([conversation]))[0] });
 
   // TODO (Anand): notify(recipientId, "new_message", { conversationId: conversation.id })
 

@@ -41,13 +41,27 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Optional: fill the feed with 30 sample listings (`npm run seed:listings` in `server/`).
+The local client proxies `/api` requests to `API_SERVER_URL` so the session cookie
+stays first-party in the browser. Create an account with an `@rutgers.edu` or
+`@scarletmail.rutgers.edu` address at `/signup`, then sign in at `/login`.
+Registration checks the email domain but does not verify inbox ownership.
+See [Authentication](docs/AUTH.md).
+
+Optional: fill the feed with sample listings (`npm run seed:listings` in `server/`).
+
+Seed the student accounts with `npm run seed:users -- --apply` after setting
+`SEED_USER_PASSWORD`. Provision username `admin` with `npm run seed:admin -- --apply`
+after setting `ADMIN_PASSWORD`. Both commands run from `server/` with `MONGODB_URI`
+configured. See [Authentication](docs/AUTH.md) for preview/reset behavior.
 
 Then open:
 
-- http://localhost:3000 for the feed. Search, filter by category, condition and price, and sort
+- http://localhost:3000 for the public feed. Browse without signing in; search, filter by category, condition and price, and sort
+- http://localhost:3000/admin/login for administrator sign-in and management
+- http://localhost:3000/rules for public marketplace rules
+- Click **View seller profile** on any listing to view the seller’s profile after signing in
 - http://localhost:3000/ui for the shared components
-- http://localhost:3000/messages for chat. Click **Start a test conversation**, then open a second browser window, switch **Test account** to Sam Okafor, and reply. Messages appear in both windows instantly.
+- http://localhost:3000/messages for chat. Messaging requires a signed-in account and an existing conversation.
 
 ## Useful commands
 
@@ -55,6 +69,7 @@ Then open:
 | --- | --- | --- |
 | server | `npm run dev` | Start the API with auto-reload |
 | server | `npm run seed:listings` | Add or reset the sample listings (`-- --remove` deletes them) |
+| server | `npm run seed:profiles` | Create User documents for the test accounts so profile pages load |
 | server | `npm test` | Run the tests in `server/tests/` (needs MongoDB running) |
 | server | `npm run lint` | Type-check |
 | client | `npm run dev` | Start the website |
@@ -83,7 +98,7 @@ server/
 | Member | Owns |
 | --- | --- |
 | Anish Shirodkar | Repo setup (structure, CI, Docker, team workflow) · UI foundation (wireframes, theme, shared components, responsive layout) · Real-time messaging (Socket.IO chat, inbox, conversations per listing) |
-| Krisha Borana | Sign-in and accounts (NetID login, sessions, protected routes) |
+| Krisha Borana | Sign-in and accounts (Rutgers email/password, sessions, protected routes) |
 | Anuj Bohra | Listings (create, edit, delete, mark sold, photo upload) |
 | Aryan Nagwekar | Feed and search (keyword search, filters) |
 | Kunal Pasad | Moderation (flagging, admin review queue) |

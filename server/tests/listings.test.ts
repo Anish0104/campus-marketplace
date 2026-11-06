@@ -93,10 +93,10 @@ describe("listings", () => {
       assert.equal(typeof res.body.error, "string");
     });
   }
-  it("requires authentication for creation and retrieval", async () => {
+  it("requires authentication for creation", async () => {
     for (const header of [undefined, "invalid"]) {
-      for (const method of ["post", "get"] as const) {
-        const req = request(app)[method](method === "post" ? "/api/listings" : `/api/listings/${other}`);
+      for (const method of ["post"] as const) {
+        const req = request(app)[method]("/api/listings");
         if (header) req.set("x-user-id", header);
         const res = await req.send(valid);
         assert.equal(res.status, 401);
@@ -108,7 +108,7 @@ describe("listings", () => {
     if (!dbReady) return t.skip("no MongoDB");
     const created = await create();
     assert.equal(created.status, 201);
-    const res = await request(app).get(`/api/listings/${created.body._id}`).set("x-user-id", other);
+    const res = await request(app).get(`/api/listings/${created.body._id}`);
     assert.equal(res.status, 200);
     assert.deepEqual(res.body, created.body);
     assert.equal(res.body.seller, seller);

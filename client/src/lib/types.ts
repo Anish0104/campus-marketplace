@@ -17,6 +17,10 @@ export type ListingSummary = {
 export type User = {
   id: string;
   name: string;
+  netId?: string;
+  username?: string;
+  email?: string;
+  role?: "student" | "admin";
 };
 
 export type Conversation = {
@@ -25,6 +29,8 @@ export type Conversation = {
   listingTitle: string;
   buyer: string;
   seller: string;
+  buyerName?: string;
+  sellerName?: string;
   lastMessage?: { body: string; sender: string; sentAt: string };
   updatedAt: string;
 };
@@ -66,6 +72,15 @@ export type FeedPage = {
   totalPages: number;
 };
 
+/** Public profile from GET /api/users/:id. Never includes email, role or suspension state. */
+export type PublicProfile = {
+  id: string;
+  name: string;
+  netId: string | null;
+  memberSince: string; // ISO date
+  listings: FeedListing[]; // active listings, newest first
+};
+
 /** A category that has active listings, from GET /api/listings/categories. */
 export type FeedCategory = { name: string; count: number };
 
@@ -83,3 +98,6 @@ export type ListingPhotoUpload = {
   expiresAt: string;
   photos: { url: string; publicId: string }[];
 };
+
+export type ManagedUser = User & { _id: string; suspended: boolean };
+export type MarketplaceRules = { content: string; updatedAt: string | null };

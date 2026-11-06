@@ -28,13 +28,14 @@ export default function ListingCard({ listing }: { listing: ListingSummary }) {
         href={`/listings/${listing.id}`}
         sx={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "stretch" }}
       >
-        <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: tokens.mist }}>
+        {/* Fixed 4:3 frame: tall or wide photos are cropped so every card is the same size. */}
+        <Box sx={{ position: "relative", aspectRatio: "4 / 3", overflow: "hidden", bgcolor: tokens.mist }}>
           {listing.imageUrl ? (
             <Box
               component="img"
               src={listing.imageUrl}
               alt=""
-              sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
             <Stack sx={{ height: "100%", alignItems: "center", justifyContent: "center", color: tokens.line }}>

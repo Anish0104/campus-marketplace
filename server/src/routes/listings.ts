@@ -1,34 +1,18 @@
 import { Router } from "express";
 import { Types, isValidObjectId } from "mongoose";
 import { requireUser } from "../middleware/requireUser";
-import { Listing, LISTING_CONDITIONS, LISTING_LIMITS } from "../models/Listing";
+import { Listing, LISTING_CONDITIONS } from "../models/Listing";
 import { PhotoUpload } from "../models/PhotoUpload";
 import { listingPhotosRouter } from "./listingPhotos";
+import { listingValidationError } from "../services/listingValidation";
 
 export const listingsRouter = Router();
-listingsRouter.use(requireUser);
-listingsRouter.use("/photos", listingPhotosRouter);
+listingsRouter.use("/photos", requireUser, listingPhotosRouter);
 
-listingsRouter.post("/", async (req, res) => {
+listingsRouter.post("/", requireUser, async (req, res) => {
   const { title, description, price, category, condition, photos = [], photoUploadId } = req.body ?? {};
-  for (const [field, value, limit] of [
-    ["title", title, LISTING_LIMITS.title],
-    ["description", description, LISTING_LIMITS.description],
-    ["category", category, LISTING_LIMITS.category],
-  ] as const) {
-    if (typeof value !== "string" || !value.trim() || value.trim().length > limit) {
-      res.status(400).json({ error: `${field} is required and must be at most ${limit} characters.` });
-      return;
-    }
-  }
-  if (typeof price !== "number" || !Number.isFinite(price) || price < 0) {
-    res.status(400).json({ error: "price must be a finite number greater than or equal to 0." });
-    return;
-  }
-  if (typeof condition !== "string" || !LISTING_CONDITIONS.some((value) => value === condition)) {
-    res.status(400).json({ error: "condition must be new, like_new, good, or fair." });
-    return;
-  }
+  const error = listingValidationError({ title, description, price, category, condition });
+  if (error) { res.status(400).json({ error }); return; }
   // URLs alone are never evidence of ownership. The batch is the authority.
   if (!Array.isArray(photos) || photos.length !== 0) {
     res.status(400).json({ error: "Use photoUploadId to attach uploaded photos; photos must be empty or omitted." });
@@ -76,7 +60,7 @@ listingsRouter.get("/:id", async (req, res) => {
     res.status(400).json({ error: "Listing id must be a valid MongoDB ObjectId." });
     return;
   }
-  const listing = await Listing.findById(req.params.id);
+  const listing = await Listing.findOne({ _id: req.params.id, status: { $ne: "removed" } });
   if (!listing) {
     res.status(404).json({ error: "Listing not found." });
     return;

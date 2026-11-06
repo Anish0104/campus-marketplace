@@ -3,13 +3,14 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import PageHeader from "@/components/PageHeader";
 import PriceTag from "@/components/PriceTag";
 import ConditionChip from "@/components/ConditionChip";
 import EmptyState from "@/components/EmptyState";
+import MessageSellerButton from "@/components/messages/MessageSellerButton";
 import { ApiError } from "@/lib/api";
 import { getListing } from "@/lib/listings";
 import type { Listing } from "@/lib/types";
@@ -31,9 +32,9 @@ function ListingDetail() {
   const validId = /^[a-f\d]{24}$/i.test(id);
 
   useEffect(() => {
-    if (!userId || !validId) return;
+    if (!validId) return;
     const controller = new AbortController();
-    getListing(userId, id, controller.signal)
+    getListing(id, controller.signal)
       .then((listing) => { if (!controller.signal.aborted) setResult({ key, listing }); })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setResult({ key, error: error instanceof ApiError ? error : new ApiError("Couldn't load this listing. Please try again.", 0) });
@@ -42,12 +43,11 @@ function ListingDetail() {
   }, [userId, id, key, validId]);
 
   const actions = <Button component={Link} href="/listings/new" variant="outlined">Sell an item</Button>;
-  if (!user) return <><PageHeader title="Listing details" /><EmptyState title="Sign in to view this listing" description="Select a test account or sign in, then open this listing again." /></>;
   if (!validId) return <><PageHeader title="Invalid listing link" /><Alert severity="error">The listing ID must contain 24 hexadecimal characters. Check the link and try again.</Alert></>;
   const current = result?.key === key ? result : null;
   if (!current) return <><PageHeader title="Listing details" /><Stack role="status" sx={{ alignItems: "center", py: 8 }} spacing={2}><CircularProgress aria-label="Loading listing" /><Typography>Loading listing…</Typography></Stack></>;
   if (current.error?.status === 404) return <><PageHeader title="Listing not found" /><EmptyState title="This listing isn't available" description="It may have been removed, or the link may be incorrect." action={actions} /></>;
-  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Select a test account or sign in to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
+  if (current.error) return <><PageHeader title="Couldn't load listing" /><Alert severity="error" sx={{ mb: 2 }}>{current.error.message}{current.error.status === 401 ? " Sign in with your Rutgers email and password to continue." : " Check your connection and try again."}</Alert><Button variant="outlined" onClick={() => setAttempt((value) => value + 1)}>Try again</Button></>;
   const listing = current.listing!;
   return (
     <>
@@ -62,12 +62,13 @@ function ListingDetail() {
               <Chip label={listing.status === "active" ? "Available" : listing.status === "sold" ? "Sold" : "Removed"} size="small" variant="outlined" />
             </Stack>
             {listing.status !== "active" && <Alert severity="info">This listing is {listing.status} and is no longer available.</Alert>}
+            <MessageSellerButton listingId={listing._id} sellerId={listing.seller} available={listing.status === "active"} />
             <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: 2, rowGap: 1.5, "& dd": { m: 0, overflowWrap: "anywhere" }, "& dt": { color: "text.secondary" } }}>
               <Typography component="dt">Category</Typography><Typography component="dd">{listing.category}</Typography>
-              <Typography component="dt">Seller ID</Typography><Typography component="dd" sx={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{listing.seller}{listing.seller === user.id ? " (you)" : ""}</Typography>
+              <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user?.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
               <Typography component="dt">Listed</Typography><Typography component="dd"><time dateTime={listing.createdAt}>{new Date(listing.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>Seller profiles are not available yet.</Typography>
+            {!user && <Alert severity="info">Browsing as a viewer. <Link href={`/login?returnTo=${encodeURIComponent(`/listings/${id}`)}`}>Sign in</Link> to participate in the marketplace.</Alert>}
             <Divider />
             <Typography variant="h4" component="h2">Description</Typography>
             <Typography sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{listing.description}</Typography>

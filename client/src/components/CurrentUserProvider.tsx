@@ -1,60 +1,70 @@
 "use client";
 
-import { createContext, useContext, useSyncExternalStore } from "react";
-import { DEV_LOGIN_ENABLED, DEV_USERS } from "@/lib/devUsers";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError, apiFetch } from "@/lib/api";
+import { disconnectSocket } from "@/lib/socket";
 import type { User } from "@/lib/types";
 
-/**
- * Who is signed in. TEMPORARY: picks one of the test accounts and remembers it
- * in this browser. When sign-in lands (Krisha), replace the inside of this
- * provider with the real session. Pages only use `useCurrentUser()`.
- */
 type CurrentUserContextValue = {
   user: User | null;
-  setUserId: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  acceptAuthentication: (user: User) => void;
+  logout: () => Promise<void>;
 };
 
 const CurrentUserContext = createContext<CurrentUserContextValue>({
   user: null,
-  setUserId: () => {},
+  loading: true,
+  error: null,
+  refresh: async () => {},
+  acceptAuthentication: () => {},
+  logout: async () => {},
 });
 
-const STORAGE_KEY = "cm:dev-user-id";
-const listeners = new Set<() => void>();
-let memoryUserId: string | null = null; // used when browser storage is blocked
-
-function readUserId(): string | null {
-  if (!DEV_LOGIN_ENABLED) return null;
-  let saved = memoryUserId;
-  try {
-    saved = window.localStorage.getItem(STORAGE_KEY) ?? memoryUserId;
-  } catch {}
-  return DEV_USERS.some((u) => u.id === saved) ? saved : DEV_USERS[0]!.id;
-}
-
-function writeUserId(id: string) {
-  memoryUserId = id;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, id);
-  } catch {}
-  listeners.forEach((notify) => notify());
-}
-
-function subscribe(notify: () => void) {
-  listeners.add(notify);
-  window.addEventListener("storage", notify);
-  return () => {
-    listeners.delete(notify);
-    window.removeEventListener("storage", notify);
-  };
-}
-
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
-  const userId = useSyncExternalStore(subscribe, readUserId, () => null);
-  const user = DEV_USERS.find((u) => u.id === userId) ?? null;
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      setUser(await apiFetch<User>("/api/auth/me"));
+      setError(null);
+    } catch (cause) {
+      setUser(null);
+      setError(cause instanceof ApiError && cause.status !== 401 ? cause.message : null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const acceptAuthentication = useCallback((authenticatedUser: User) => {
+    disconnectSocket();
+    setUser(authenticatedUser);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(refresh);
+  }, [refresh]);
+
+  const logout = useCallback(async () => {
+    try {
+      await apiFetch<void>("/api/auth/logout", { method: "POST" });
+      disconnectSocket();
+      setUser(null);
+      setError(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign out. Please try again.");
+    }
+  }, []);
 
   return (
-    <CurrentUserContext.Provider value={{ user, setUserId: writeUserId }}>
+    <CurrentUserContext.Provider value={{ user, loading, error, refresh, acceptAuthentication, logout }}>
       {children}
     </CurrentUserContext.Provider>
   );

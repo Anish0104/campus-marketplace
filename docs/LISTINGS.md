@@ -1,10 +1,14 @@
 # Listings: Stages 1, 2 and 3
 
-All listing endpoints require the existing `requireUser` middleware and temporary
-`x-user-id` header. **This header is impersonable:** it validates ObjectId syntax,
-not a real session or account existence. Ownership is enforced relative to
-`req.userId`; production protection requires Krisha's session authentication.
-Do not expose this temporary identity scheme as production authentication.
+All listing endpoints require the `requireUser` middleware and a valid marketplace
+session cookie. `req.userId` is loaded from the server-side account record. Create
+an account or sign in through the app before testing authenticated listing
+endpoints; the project has no demo-account login. The optional prepared-account
+seed is documented in [Authentication](AUTH.md).
+
+The optional `curl` example below assumes you already have a valid marketplace
+session cookie. For normal testing, use the browser UI; its HttpOnly session
+cookie is sent automatically.
 
 ## Listing schema
 
@@ -31,7 +35,7 @@ No text fields are accepted. Authentication runs before multipart parsing.
 
 ```bash
 curl -X POST http://localhost:4000/api/listings/photos \
-  -H "x-user-id: YOUR_TEST_USER_OBJECT_ID" \
+  -b cookies.txt \
   -F "photos=@/path/to/book.jpg;type=image/jpeg" \
   -F "photos=@/path/to/desk.png;type=image/png"
 ```
@@ -196,7 +200,7 @@ Limitations:
 ## Stage 3: frontend usage and integration
 
 Open `http://localhost:3000/listings/new`, or use **Sell an item** in the existing
-navigation/home page. Select a development account in the header when available.
+navigation/home page after signing in.
 The form requires title, description, category, condition, and a numeric USD price
 of zero or more. Category stays free text, matching the backend. Field length
 limits match Stage 1. Photos are optional.
@@ -213,7 +217,7 @@ Submission performs these steps:
 1. Validate required fields and price; focus the first invalid field.
 2. Lock the form synchronously to prevent duplicate submissions.
 3. If there are photos, POST one FormData batch to `/api/listings/photos`, with
-   repeated `photos` fields and the current account's `x-user-id`. The shared
+   repeated `photos` fields and the current session cookie. The shared
    `apiFetch` recognizes FormData and leaves Content-Type unset so fetch supplies
    the multipart boundary. Existing JSON messaging requests remain JSON.
 4. POST listing JSON to `/api/listings` with the returned `photoUploadId`. No URL
@@ -228,9 +232,9 @@ abandoned prior batches follow the 24-hour cleanup policy above. A lost network
 response can hide a successful write: the error warns users to check before
 resubmitting. The API has no idempotency key, so duplicates remain possible after
 an ambiguous network failure. Drafts are kept only in memory, not persisted.
-Changing accounts discards the draft; if it happens during an upload, the old
-form does not proceed to creation. A listing request already sent may still save
-under the original account.
+Signing out discards the draft; if it happens during an upload, the old form does
+not proceed to creation. A listing request already sent may still save under the
+original account.
 
 The detail page `/listings/[id]` fetches `GET /api/listings/:id` using the current
 account. Requests are cancelled on route/account changes and stale results are
@@ -259,9 +263,7 @@ No chat action, edit, delete, mark-sold or other teammates' features are added.
 
 With MongoDB, server (port 4000), and client (port 3000) running:
 
-1. Open `/listings/new`. On desktop select the Anuj test account. On mobile the
-   existing provider uses the remembered/default account; the shared header's
-   account switcher is desktop/tablet only.
+1. Create an account or sign in and open `/listings/new`.
 2. Submit an empty form and check inline validation. Enter an item with price 0
    and no photos; create it and verify the detail page shows Free, the description,
    category, condition, seller ID, created date and no-photo placeholder.

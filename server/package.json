@@ -11,15 +11,23 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "NODE_ENV=test tsx --test tests/*.test.ts",
     "photos:cleanup": "tsx src/scripts/cleanupListingPhotos.ts",
-    "seed:listings": "tsx src/scripts/seedListings.ts"
+    "seed:listings": "tsx src/scripts/seedListings.ts",
+    "seed:users": "tsx src/scripts/seedUsers.ts",
+    "migrate:auth-user-indexes": "tsx src/scripts/migrateAuthUserIndexes.ts",
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "seed:profiles": "tsx src/scripts/seedDevProfiles.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
+    "connect-mongo": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "express-session": "^1.19.0",
     "mongoose": "^9.11.4",
     "multer": "^2.5.0",
     "sharp": "^0.35.5",
@@ -28,6 +36,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
     "@types/multer": "^2.3.0",
     "@types/node": "^20.19.43",
     "@types/supertest": "^7.2.1",

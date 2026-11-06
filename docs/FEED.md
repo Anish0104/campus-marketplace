@@ -9,8 +9,8 @@ with the Back button.
 
 ## API
 
-Both routes need the temporary `x-user-id` header (`requireUser`), like the rest of
-`/api/listings`. They live in `server/src/routes/feed.ts`, which `app.ts` mounts
+Both routes require the current marketplace session (`requireUser`), like the rest
+of `/api/listings`. They live in `server/src/routes/feed.ts`, which `app.ts` mounts
 before the listings router so `/categories` is never read as a listing id.
 
 ### `GET /api/listings`
@@ -95,9 +95,13 @@ npm run seed:listings -- --remove  # delete only the sample listings
 - 30 active samples across Textbooks, Furniture, Appliances, Electronics, Supplies,
   Clothing, Bikes and Other, plus 2 sold ones that should never show in the feed.
 - Prices range from free to $150 and creation times are spread over the last week.
-- Sellers are the three test accounts in `client/src/lib/devUsers.ts`.
+- Sample listings use the prepared Rutgers student accounts as sellers when those
+  accounts exist; test runs without them use placeholder IDs. The seed does not
+  create accounts.
+- Sample cards use free-to-view stock photos hosted by Unsplash. They are illustrative
+  images and are not photos of the actual items.
 - Every sample has a fixed id starting with `5eed`, so running the script again resets
-  the samples and never touches listings people created. Samples have no photos.
+  the samples and never touches listings people created.
 - The script refuses to run with `NODE_ENV=production` unless you pass `--force`.
 
 ## Page

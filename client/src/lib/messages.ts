@@ -3,25 +3,27 @@ import type { Conversation, Message } from "./types";
 
 export const MESSAGE_MAX_LENGTH = 1000;
 
-export const listConversations = (userId: string) =>
-  apiFetch<Conversation[]>("/api/conversations", { userId });
+export const listConversations = () =>
+  apiFetch<Conversation[]>("/api/conversations");
 
 /**
- * Opens the conversation with a seller about a listing, creating it if needed.
- * Listing pages call this from a "Message seller" button, then go to
- * `/messages?c=<conversation id>`.
+ * Opens the conversation with the seller of a listing, creating it if needed.
+ * The server reads the seller and title from the listing itself.
+ * Used by MessageSellerButton, which then goes to `/messages?c=<conversation id>`.
  */
-export const startConversation = (
-  userId: string,
-  listing: { listingId: string; sellerId: string; listingTitle: string }
-) => apiFetch<Conversation>("/api/conversations", { method: "POST", body: listing, userId });
+export const startConversation = (listingId: string) =>
+  apiFetch<Conversation>("/api/conversations", { method: "POST", body: { listingId } });
 
-export const listMessages = (userId: string, conversationId: string) =>
-  apiFetch<Message[]>(`/api/conversations/${conversationId}/messages`, { userId });
+/** Name of the other person in a conversation. */
+export function otherPersonName(c: Conversation, currentUserId: string) {
+  return (c.buyer === currentUserId ? c.sellerName : c.buyerName) ?? "Rutgers student";
+}
 
-export const sendMessage = (userId: string, conversationId: string, body: string) =>
+export const listMessages = (conversationId: string) =>
+  apiFetch<Message[]>(`/api/conversations/${conversationId}/messages`);
+
+export const sendMessage = (conversationId: string, body: string) =>
   apiFetch<Message>(`/api/conversations/${conversationId}/messages`, {
     method: "POST",
     body: { body },
-    userId,
   });
