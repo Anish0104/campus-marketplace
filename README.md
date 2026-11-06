@@ -41,11 +41,12 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Optional: fill the feed with 30 sample listings (`npm run seed:listings` in `server/`).
+Optional, in `server/`: `npm run seed:listings` fills the feed with 30 sample listings, and `npm run seed:profiles` creates the test accounts' profiles.
 
 Then open:
 
 - http://localhost:3000 for the feed. Search, filter by category, condition and price, and sort
+- http://localhost:3000/users/000000000000000000000001 for a profile (after `npm run seed:profiles`), or click **View seller profile** on any listing
 - http://localhost:3000/ui for the shared components
 - http://localhost:3000/messages for chat. Click **Start a test conversation**, then open a second browser window, switch **Test account** to Sam Okafor, and reply. Messages appear in both windows instantly.
 
@@ -55,6 +56,7 @@ Then open:
 | --- | --- | --- |
 | server | `npm run dev` | Start the API with auto-reload |
 | server | `npm run seed:listings` | Add or reset the sample listings (`-- --remove` deletes them) |
+| server | `npm run seed:profiles` | Create User documents for the test accounts so profile pages load |
 | server | `npm test` | Run the tests in `server/tests/` (needs MongoDB running) |
 | server | `npm run lint` | Type-check |
 | client | `npm run dev` | Start the website |
