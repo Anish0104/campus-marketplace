@@ -7,7 +7,7 @@ on:
 
 jobs:
   server:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: server
@@ -16,28 +16,46 @@ jobs:
         image: mongo:8
         ports:
           - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       MONGODB_TEST_URI: mongodb://127.0.0.1:27017/campus-marketplace-test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: server/package-lock.json
+      - name: Wait for MongoDB
+        run: |
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/27017) 2>/dev/null; then
+              echo "MongoDB is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MongoDB did not start. Container status and logs:"
+          docker ps -a
+          docker logs "${{ job.services.mongo.id }}" || true
+          exit 1
       - run: npm ci
       - run: npm run lint
       - run: npm run build
       - run: npm test
 
   client:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: client
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
