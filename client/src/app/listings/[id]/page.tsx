@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import PageHeader from "@/components/PageHeader";
@@ -63,10 +63,9 @@ function ListingDetail() {
             {listing.status !== "active" && <Alert severity="info">This listing is {listing.status} and is no longer available.</Alert>}
             <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: 2, rowGap: 1.5, "& dd": { m: 0, overflowWrap: "anywhere" }, "& dt": { color: "text.secondary" } }}>
               <Typography component="dt">Category</Typography><Typography component="dd">{listing.category}</Typography>
-              <Typography component="dt">Seller ID</Typography><Typography component="dd" sx={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{listing.seller}{listing.seller === user?.id ? " (you)" : ""}</Typography>
+              <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user?.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
               <Typography component="dt">Listed</Typography><Typography component="dd"><time dateTime={listing.createdAt}>{new Date(listing.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>Seller profiles are not available yet.</Typography>
             {!user && <Alert severity="info">Browsing as a viewer. <Link href={`/login?returnTo=${encodeURIComponent(`/listings/${id}`)}`}>Sign in</Link> to participate in the marketplace.</Alert>}
             <Divider />
             <Typography variant="h4" component="h2">Description</Typography>

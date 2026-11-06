@@ -59,6 +59,7 @@ Then open:
 - http://localhost:3000 for the public feed. Browse without signing in; search, filter by category, condition and price, and sort
 - http://localhost:3000/admin/login for administrator sign-in and management
 - http://localhost:3000/rules for public marketplace rules
+- Click **View seller profile** on any listing to view the seller’s profile after signing in
 - http://localhost:3000/ui for the shared components
 - http://localhost:3000/messages for chat. Messaging requires a signed-in account and an existing conversation.
 
@@ -68,6 +69,7 @@ Then open:
 | --- | --- | --- |
 | server | `npm run dev` | Start the API with auto-reload |
 | server | `npm run seed:listings` | Add or reset the sample listings (`-- --remove` deletes them) |
+| server | `npm run seed:profiles` | Create User documents for the test accounts so profile pages load |
 | server | `npm test` | Run the tests in `server/tests/` (needs MongoDB running) |
 | server | `npm run lint` | Type-check |
 | client | `npm run dev` | Start the website |

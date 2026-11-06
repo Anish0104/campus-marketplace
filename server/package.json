@@ -16,7 +16,8 @@
     "seed:listings": "tsx src/scripts/seedListings.ts",
     "seed:users": "tsx src/scripts/seedUsers.ts",
     "migrate:auth-user-indexes": "tsx src/scripts/migrateAuthUserIndexes.ts",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "seed:profiles": "tsx src/scripts/seedDevProfiles.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

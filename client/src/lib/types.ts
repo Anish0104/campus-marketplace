@@ -70,6 +70,15 @@ export type FeedPage = {
   totalPages: number;
 };
 
+/** Public profile from GET /api/users/:id. Never includes email, role or suspension state. */
+export type PublicProfile = {
+  id: string;
+  name: string;
+  netId: string | null;
+  memberSince: string; // ISO date
+  listings: FeedListing[]; // active listings, newest first
+};
+
 /** A category that has active listings, from GET /api/listings/categories. */
 export type FeedCategory = { name: string; count: number };
 
