@@ -21,13 +21,16 @@ let dbReady = false;
 before(async () => {
   try {
     await mongoose.connect(TEST_DB.toString(), { serverSelectionTimeoutMS: 2000 });
-    // Unique indexes are only enforced once built; model creation is lazy.
-    await Flag.init();
-    await User.init();
-    dbReady = true;
   } catch {
     console.warn("Skipping flag database tests: MongoDB unavailable.");
+    return;
   }
+  // Only an unreachable database is a reason to skip. Anything that fails after
+  // connecting is a real problem, so let it surface instead of reporting a pass.
+  // Index builds are lazy, and a stale index from an older schema throws here.
+  await Flag.init();
+  await User.init();
+  dbReady = true;
 });
 
 beforeEach(async () => {
@@ -193,5 +196,15 @@ describe("User model suspension contract", () => {
       User.create({ netId: "ij2", name: "Two", email: "two@rutgers.edu" }),
       /duplicate key/i
     );
+  });
+
+  // netId and email are optional in Krisha's model (a CAS user has no password,
+  // a password user has no NetID), so the unique indexes are sparse. Several
+  // accounts may therefore leave the same field unset without colliding.
+  it("allows several users with no netId, since the index is sparse", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    await User.create({ name: "Password User", username: "pw1" });
+    await User.create({ name: "Another", username: "pw2" });
+    assert.equal(await User.countDocuments({ netId: { $exists: false } }), 2);
   });
 });
