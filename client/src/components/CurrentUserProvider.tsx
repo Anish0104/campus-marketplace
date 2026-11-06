@@ -42,7 +42,9 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const acceptAuthentication = useCallback((authenticatedUser: User) => {
+    disconnectSocket();
     setUser(authenticatedUser);
+    setLoading(false);
     setError(null);
   }, []);
 

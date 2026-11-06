@@ -36,7 +36,7 @@ describe("seed users", () => {
   it("creates the requested student accounts with hashed passwords and is repeatable", async (t) => {
     if (!dbReady) return t.skip("no MongoDB");
     const first = await seedUsers(TEST_PASSWORD);
-    assert.deepEqual(first, { created: 3, updated: 0 });
+    assert.deepEqual(first, { created: SEEDED_USERS.length, updated: 0 });
 
     for (const expected of SEEDED_USERS) {
       const user = await User.findOne({ email: expected.email }).select("+passwordHash");
@@ -49,8 +49,8 @@ describe("seed users", () => {
     }
 
     const second = await seedUsers(TEST_PASSWORD);
-    assert.deepEqual(second, { created: 0, updated: 3 });
-    assert.equal(await User.countDocuments({ email: { $in: SEEDED_USERS.map((user) => user.email) } }), 3);
+    assert.deepEqual(second, { created: 0, updated: SEEDED_USERS.length });
+    assert.equal(await User.countDocuments({ email: { $in: SEEDED_USERS.map((user) => user.email) } }), SEEDED_USERS.length);
   });
 
   it("resets an existing password while preserving its role and other account state", async (t) => {
@@ -64,7 +64,7 @@ describe("seed users", () => {
     });
 
     const result = await seedUsers(TEST_PASSWORD);
-    assert.deepEqual(result, { created: 2, updated: 1 });
+    assert.deepEqual(result, { created: SEEDED_USERS.length - 1, updated: 1 });
     const user = await User.findOne({ email: target.email }).select("+passwordHash");
     assert.ok(user);
     assert.equal(user.name, target.name);

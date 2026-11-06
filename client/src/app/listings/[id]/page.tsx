@@ -7,7 +7,6 @@ import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Paper,
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import PageHeader from "@/components/PageHeader";
-import AuthGate from "@/components/AuthGate";
 import PriceTag from "@/components/PriceTag";
 import ConditionChip from "@/components/ConditionChip";
 import EmptyState from "@/components/EmptyState";
@@ -19,7 +18,7 @@ import { tokens } from "@/theme/tokens";
 type Result = { key: string; listing?: Listing; error?: ApiError };
 
 export default function ListingDetailPage() {
-  return <Suspense fallback={<CircularProgress aria-label="Loading listing" />}><AuthGate><ListingDetail /></AuthGate></Suspense>;
+  return <Suspense fallback={<CircularProgress aria-label="Loading listing" />}><ListingDetail /></Suspense>;
 }
 
 function ListingDetail() {
@@ -32,7 +31,7 @@ function ListingDetail() {
   const validId = /^[a-f\d]{24}$/i.test(id);
 
   useEffect(() => {
-    if (!userId || !validId) return;
+    if (!validId) return;
     const controller = new AbortController();
     getListing(id, controller.signal)
       .then((listing) => { if (!controller.signal.aborted) setResult({ key, listing }); })
@@ -43,7 +42,6 @@ function ListingDetail() {
   }, [userId, id, key, validId]);
 
   const actions = <Button component={Link} href="/listings/new" variant="outlined">Sell an item</Button>;
-  if (!user) return <><PageHeader title="Listing details" /><EmptyState title="Sign in to view this listing" description="Sign in with your Rutgers email and password, then open this listing again." /></>;
   if (!validId) return <><PageHeader title="Invalid listing link" /><Alert severity="error">The listing ID must contain 24 hexadecimal characters. Check the link and try again.</Alert></>;
   const current = result?.key === key ? result : null;
   if (!current) return <><PageHeader title="Listing details" /><Stack role="status" sx={{ alignItems: "center", py: 8 }} spacing={2}><CircularProgress aria-label="Loading listing" /><Typography>Loading listing…</Typography></Stack></>;
@@ -65,10 +63,11 @@ function ListingDetail() {
             {listing.status !== "active" && <Alert severity="info">This listing is {listing.status} and is no longer available.</Alert>}
             <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: 2, rowGap: 1.5, "& dd": { m: 0, overflowWrap: "anywhere" }, "& dt": { color: "text.secondary" } }}>
               <Typography component="dt">Category</Typography><Typography component="dd">{listing.category}</Typography>
-              <Typography component="dt">Seller ID</Typography><Typography component="dd" sx={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{listing.seller}{listing.seller === user.id ? " (you)" : ""}</Typography>
+              <Typography component="dt">Seller ID</Typography><Typography component="dd" sx={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{listing.seller}{listing.seller === user?.id ? " (you)" : ""}</Typography>
               <Typography component="dt">Listed</Typography><Typography component="dd"><time dateTime={listing.createdAt}>{new Date(listing.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></Typography>
             </Box>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>Seller profiles are not available yet.</Typography>
+            {!user && <Alert severity="info">Browsing as a viewer. <Link href={`/login?returnTo=${encodeURIComponent(`/listings/${id}`)}`}>Sign in</Link> to participate in the marketplace.</Alert>}
             <Divider />
             <Typography variant="h4" component="h2">Description</Typography>
             <Typography sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{listing.description}</Typography>

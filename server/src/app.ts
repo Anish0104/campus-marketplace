@@ -8,6 +8,9 @@ import { conversationsRouter } from "./routes/conversations";
 import { feedRouter } from "./routes/feed";
 import { listingsRouter } from "./routes/listings";
 
+import { adminRouter } from "./routes/admin";
+import { rulesRouter } from "./routes/rules";
+
 export function createApp() {
   const app = express();
   const production = process.env.NODE_ENV === "production";
@@ -63,6 +66,8 @@ export function createApp() {
 
   // Each feature adds its router here, e.g. app.use("/api/listings", listingsRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api/admin", adminRouter);
+  app.use("/api/rules", rulesRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/listings", feedRouter); // GET / and /categories; must come before /:id

@@ -1,17 +1,16 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
 import { User } from "../models/User";
 import { requireUser } from "../middleware/requireUser";
-import { hashPassword, verifyPassword } from "../services/password";
+import { hashPassword, verifyPassword, validPassword, PASSWORD_MIN_LENGTH, PASSWORD_MAX_BYTES } from "../services/password";
 import { issueSocketTicket } from "../services/socketTicket";
 
 export const authRouter = Router();
 
 const EMAIL_MAX_LENGTH = 254;
 const NAME_MAX_LENGTH = 120;
-const PASSWORD_MIN_LENGTH = 8;
-const PASSWORD_MAX_LENGTH = 72;
+const PASSWORD_MAX_LENGTH = PASSWORD_MAX_BYTES;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RUTGERS_DOMAINS = new Set(["rutgers.edu", "scarletmail.rutgers.edu"]);
 let dummyPasswordHash: Promise<string> | undefined;
@@ -38,6 +37,7 @@ const safeUser = (user: InstanceType<typeof User>) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  ...(user.username ? { username: user.username } : {}),
 });
 
 function saveSession(req: Request) {
@@ -50,6 +50,12 @@ function regenerateSession(req: Request) {
   return new Promise<void>((resolve, reject) => {
     req.session.regenerate((error) => (error ? reject(error) : resolve()));
   });
+}
+
+async function establishSession(req: Request, userId: string) {
+  await regenerateSession(req);
+  req.session.userId = userId;
+  await saveSession(req);
 }
 
 function normalizedRutgersEmail(value: unknown): { email?: string; error?: string } {
@@ -66,13 +72,6 @@ function normalizedRutgersEmail(value: unknown): { email?: string; error?: strin
     return { error: "Enter a valid email address." };
   }
   return { email };
-}
-
-function validPassword(value: unknown): value is string {
-  return typeof value === "string" &&
-    value.length >= PASSWORD_MIN_LENGTH &&
-    value.length <= PASSWORD_MAX_LENGTH &&
-    Buffer.byteLength(value, "utf8") <= PASSWORD_MAX_LENGTH;
 }
 
 function getDummyPasswordHash() {
@@ -116,42 +115,40 @@ authRouter.post("/register", registrationLimit, async (req, res) => {
     throw error;
   }
 
-  await regenerateSession(req);
-  req.session.userId = user.id;
-  await saveSession(req);
+  await establishSession(req, user.id);
   res.status(201).json(safeUser(user));
 });
 
-authRouter.post("/login", loginLimit, async (req, res) => {
-  const emailResult = normalizedRutgersEmail(req.body?.email);
-  const password = req.body?.password;
-  if (emailResult.error || typeof password !== "string" ||
-      password.length > PASSWORD_MAX_LENGTH || Buffer.byteLength(password, "utf8") > PASSWORD_MAX_LENGTH) {
-    res.status(401).json({ error: "Email or password is incorrect." });
-    return;
-  }
+// Both entry points use identical credential verification and session rotation.
+function login(admin: boolean) {
+  return async (req: Request, res: Response) => {
+    const emailResult = normalizedRutgersEmail(req.body?.email);
+    const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
+    const password = req.body?.password;
+    const invalid = admin ? !username || username.length > 32 : !!emailResult.error;
+    const error = admin ? "Username or password is incorrect." : "Email or password is incorrect.";
+    if (invalid || typeof password !== "string" || Buffer.byteLength(password, "utf8") > PASSWORD_MAX_BYTES) {
+      res.status(401).json({ error });
+      return;
+    }
+    const user = await User.findOne(admin ? { username, role: "admin" } : { email: emailResult.email, role: "student" })
+      .select("+passwordHash username netId name email role suspended");
+    const matches = await verifyPassword(password, user?.passwordHash ?? await getDummyPasswordHash());
+    if (!user?.passwordHash || !matches) {
+      res.status(401).json({ error });
+      return;
+    }
+    if (user.suspended) {
+      res.status(403).json({ error: "This account is suspended. Contact an administrator." });
+      return;
+    }
+    await establishSession(req, user.id);
+    res.json(safeUser(user));
+  };
+}
 
-  const user = await User.findOne({ email: emailResult.email })
-    .select("+passwordHash netId name email role suspended");
-  if (!user?.passwordHash) {
-    await verifyPassword(password, await getDummyPasswordHash());
-    res.status(401).json({ error: "Email or password is incorrect." });
-    return;
-  }
-  if (!(await verifyPassword(password, user.passwordHash))) {
-    res.status(401).json({ error: "Email or password is incorrect." });
-    return;
-  }
-  if (user.suspended) {
-    res.status(403).json({ error: "This account is suspended. Contact an administrator." });
-    return;
-  }
-
-  await regenerateSession(req);
-  req.session.userId = user.id;
-  await saveSession(req);
-  res.json(safeUser(user));
-});
+authRouter.post("/login", loginLimit, login(false));
+authRouter.post("/admin/login", loginLimit, login(true));
 
 authRouter.post("/socket-ticket", requireUser, (req, res) => {
   res.json({ ticket: issueSocketTicket(req.userId!) });
@@ -164,7 +161,7 @@ authRouter.get("/me", async (req, res) => {
     return;
   }
 
-  const user = await User.findById(userId).select("netId name email role suspended");
+  const user = await User.findById(userId).select("username netId name email role suspended");
   if (!user || user.suspended) {
     req.session.destroy(() => {});
     res.status(user?.suspended ? 403 : 401).json({

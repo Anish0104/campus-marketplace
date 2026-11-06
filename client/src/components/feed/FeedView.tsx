@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
@@ -9,7 +9,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import { useCurrentUser } from "@/components/CurrentUserProvider";
 import EmptyState from "@/components/EmptyState";
 import LinkButton from "@/components/LinkButton";
 import ListingGrid from "@/components/ListingGrid";
@@ -24,29 +23,22 @@ import type { FeedCategory, FeedPage } from "@/lib/types";
 // never shows up after the filters or signed-in user have changed.
 type FeedResult = { key: string; data?: FeedPage; error?: ApiError };
 
-const subscribeToHydration = () => () => {};
 
 /** The home page feed: search, filters, results and paging. Filters live in the URL. */
 export default function FeedView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useCurrentUser();
-  const userId = user?.id;
-  // The signed-in user is only known in the browser. Until then, show the loading grid.
-  const hydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
-
   const queryString = searchParams.toString();
   const filters = useMemo(() => readFilters(new URLSearchParams(queryString)), [queryString]);
   const apiQuery = filtersToQuery(filters);
 
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<FeedResult | null>(null);
-  const [categories, setCategories] = useState<{ userId: string; list: FeedCategory[] } | null>(null);
-  const key = `${userId}:${apiQuery}:${attempt}`;
+  const [categories, setCategories] = useState<{ list: FeedCategory[] } | null>(null);
+  const key = `${apiQuery}:${attempt}`;
 
   useEffect(() => {
-    if (!userId) return;
     const controller = new AbortController();
     getFeed(filters, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setResult({ key, data }); })
@@ -55,17 +47,16 @@ export default function FeedView() {
         setResult({ key, error: error instanceof ApiError ? error : new ApiError("Couldn't load listings. Please try again.", 0) });
       });
     return () => controller.abort();
-  }, [userId, filters, key]);
+  }, [filters, key]);
 
   // Categories for the filter menu. If this fails the menu still offers "All categories".
   useEffect(() => {
-    if (!userId) return;
     const controller = new AbortController();
     getFeedCategories(controller.signal)
-      .then((list) => { if (!controller.signal.aborted) setCategories({ userId, list }); })
+      .then((list) => { if (!controller.signal.aborted) setCategories({ list }); })
       .catch(() => {});
     return () => controller.abort();
-  }, [userId]);
+  }, []);
 
   function navigate(next: FeedFilters, { push = false } = {}) {
     const query = filtersToQuery(next);
@@ -79,16 +70,6 @@ export default function FeedView() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  if (hydrated && !user) {
-    return (
-      <EmptyState
-        icon={<StorefrontOutlinedIcon />}
-        title="Sign in to browse listings"
-        description="The marketplace is for Rutgers students only. Sign in with your Rutgers email and password to continue."
-      />
-    );
-  }
-
   const current = result?.key === key ? result : null;
   const filtered = hasActiveFilters(filters);
 
@@ -96,7 +77,7 @@ export default function FeedView() {
     <>
       <FeedFilterBar
         filters={filters}
-        categories={categories && categories.userId === userId ? categories.list : []}
+        categories={categories?.list ?? []}
         onChange={(next) => navigate(next)}
       />
       <FeedResults

@@ -49,9 +49,16 @@ See [Authentication](docs/AUTH.md).
 
 Optional: fill the feed with sample listings (`npm run seed:listings` in `server/`).
 
+Seed the student accounts with `npm run seed:users -- --apply` after setting
+`SEED_USER_PASSWORD`. Provision username `admin` with `npm run seed:admin -- --apply`
+after setting `ADMIN_PASSWORD`. Both commands run from `server/` with `MONGODB_URI`
+configured. See [Authentication](docs/AUTH.md) for preview/reset behavior.
+
 Then open:
 
-- http://localhost:3000 for the feed. Search, filter by category, condition and price, and sort
+- http://localhost:3000 for the public feed. Browse without signing in; search, filter by category, condition and price, and sort
+- http://localhost:3000/admin/login for administrator sign-in and management
+- http://localhost:3000/rules for public marketplace rules
 - http://localhost:3000/ui for the shared components
 - http://localhost:3000/messages for chat. Messaging requires a signed-in account and an existing conversation.
 

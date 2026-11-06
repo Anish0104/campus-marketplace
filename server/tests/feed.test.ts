@@ -118,11 +118,11 @@ describe("feed query builders", () => {
 });
 
 describe("GET /api/listings", () => {
-  it("requires a signed-in user", async () => {
+  it("allows viewers to browse and read categories", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
     for (const path of ["/api/listings", "/api/listings/categories"]) {
       const res = await request(app).get(path);
-      assert.equal(res.status, 401);
-      assert.equal(typeof res.body.error, "string");
+      assert.equal(res.status, 200);
     }
   });
 

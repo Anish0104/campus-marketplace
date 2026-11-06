@@ -14,6 +14,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useCurrentUser } from "@/components/CurrentUserProvider";
 import { ApiError, apiFetch } from "@/lib/api";
+import { safeReturnPath } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -148,8 +149,4 @@ function SignupContent() {
       </Paper>
     </Box>
   );
-}
-
-function safeReturnPath(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value : "/";
 }

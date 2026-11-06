@@ -35,14 +35,14 @@ export default function AppHeader() {
       sx={{ bgcolor: tokens.paper, color: tokens.ink, borderBottom: `1px solid ${tokens.line}` }}
     >
       <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 60, sm: 68 } }}>
+        <Toolbar disableGutters sx={{ flexWrap: "wrap", py: 1, gap: { xs: 0.5, sm: 2 }, minHeight: { xs: 60, sm: 68 } }}>
           <Typography
             component={Link}
             href="/"
             sx={{
               fontFamily: '"Bricolage Grotesque Variable", system-ui, sans-serif',
               fontWeight: 750,
-              fontSize: { xs: "1.05rem", sm: "1.25rem" },
+              fontSize: { xs: "0.95rem", sm: "1.25rem" },
               letterSpacing: "-0.02em",
               color: "inherit",
               textDecoration: "none",
@@ -53,7 +53,7 @@ export default function AppHeader() {
           </Typography>
 
           <Stack direction="row" spacing={0.5} sx={{ display: { xs: "none", md: "flex" }, ml: 2 }}>
-            {NAV.map((item) => (
+            {NAV.filter((item) => item.href !== "/messages" || user).map((item) => (
               <Button
                 key={item.href}
                 component={Link}
@@ -70,10 +70,12 @@ export default function AppHeader() {
             ))}
           </Stack>
 
+          <Button component={Link} href="/rules" color="inherit">Rules</Button>
+          {user?.role === "admin" && <Button component={Link} href="/admin" color="inherit">Admin</Button>}
           <Box sx={{ flexGrow: 1 }} />
 
           <Stack direction="row" spacing={0.5} sx={{ display: { xs: "flex", md: "none" } }}>
-            {NAV.map((item) => (
+            {NAV.filter((item) => item.href !== "/messages" || user).map((item) => (
               <Tooltip key={item.href} title={item.label}>
                 <IconButton
                   component={Link}

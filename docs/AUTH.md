@@ -20,7 +20,7 @@ required. Login and registration requests are rate limited.
 Password-reset email is not configured; forgotten passwords require administrator
 assistance until an email provider is added.
 
-For controlled project/demo use, the three prepared Rutgers student accounts
+For controlled project/demo use, the five prepared Rutgers student accounts
 can be created or reset with the same password. Set `MONGODB_URI` to the intended
 database and review it carefully; the command previews by default. To apply,
 provide the shared password through `SEED_USER_PASSWORD` using a secure local
@@ -41,8 +41,8 @@ CAS sign-in has been removed. There is no demo-account or passwordless login pat
 
 Password-created accounts use their normalized email as the unique login
 identifier. Legacy `netId` remains optional for existing records. New accounts
-default to the `student` role; administrator promotion is a privileged database
-operation because the app has no admin-management interface.
+default to the `student` role. The `admin` account is provisioned with the explicit
+CLI command below. Browser registration cannot set a username or role.
 
 If upgrading a database that contains CAS-created accounts, those accounts do not
 have password hashes and cannot use password login. Do not silently link a new
@@ -80,3 +80,77 @@ short-lived, single-use credentials issued only to the current session.
 The API continues to populate `req.userId`, so feature routes can use the existing
 owner/participant logic. The old `x-user-id` header is accepted only by the test
 runner's isolated test mode; clients do not send it.
+
+
+## Viewer and administrator flows
+
+Anyone can browse `/`, search/filter, read active or sold listing details, and read
+`/rules` without a session. A viewer is not a database account. Creating listings,
+uploading photos, and messaging still require an active account. Removed listings
+return 404 on the public detail endpoint and are excluded from the feed.
+
+The student login page has **Admin? login here** linking to `/admin/login`.
+Administrators use a username (the seeded account is `admin`), while student
+accounts continue using Rutgers email. The two endpoints share password checking,
+rate limits and session rotation. Admins sign in through the admin entry point.
+
+### Provision the administrator
+
+From `server/`, configure `MONGODB_URI` for the intended database. Preview first:
+
+```bash
+npm run seed:admin
+```
+
+Supply the agreed demo password through `ADMIN_PASSWORD` in your local environment
+or ignored `.env` file. No default admin password is stored in the repository.
+Then run:
+
+```bash
+npm run seed:admin -- --apply
+```
+
+This creates one username `admin` with a bcrypt hash. Repeating it preserves an
+existing admin account and password. To intentionally reset its password, provide
+the replacement through `ADMIN_PASSWORD` and run:
+
+```bash
+npm run seed:admin -- --apply --reset-password
+```
+
+The command refuses to promote a student that already owns the username. It never
+changes an existing account's suspension state. A unique sparse username index
+prevents duplicate admin usernames; legacy email/netId indexes still require the
+migration described above when upgrading a CAS database.
+
+### Administration
+
+`/admin` is role-gated and all `/api/admin/*` routes independently verify the role
+from the current database account. The dashboard provides:
+
+- Paginated listing management: edit title, description, price, category,
+  condition, and active/sold/removed status. Ownership and photos are immutable
+  through this endpoint; removal is reversible.
+- Paginated user management: suspend/restore students, with confirmation.
+  Administrator accounts cannot be suspended here. Roles, passwords and personal
+  identity fields cannot be changed through this endpoint.
+- A rules editor publishing plain text to the public `/rules` page.
+
+Suspension rejects login and subsequent authenticated requests and disconnects
+active sockets. The flag/review queue remains Kunal's separate feature. Password
+recovery, verified email ownership, moderation audit history, and concurrent-edit
+conflict resolution remain future work.
+
+## Verification
+
+Run `npm run lint`, `npm run build`, and `npm test` in `server/`; run
+`npm run lint` and `npm run build` in `client/`. Set `MONGODB_TEST_URI` to a dedicated
+test database before testing: suites create and delete suffixed test databases.
+`roles.test.ts` deliberately fails if MongoDB is unavailable. It exercises actual
+cookie sessions (not the test authentication headers), seed repeatability, all
+five student seed logins, role boundaries, public visibility, suspension and
+rules publishing. Existing feature tests also remain in the suite.
+
+Manual walkthrough: open `/` signed out, search/filter and open a listing; visit
+`/login`, follow the admin link, sign in, edit a listing and its status, suspend
+and restore a student, publish rules, then sign out and confirm the public result.
