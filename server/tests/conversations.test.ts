@@ -8,6 +8,7 @@ import { io as connectClient, type Socket } from "socket.io-client";
 import { createApp } from "../src/app";
 import { initSocket } from "../src/socket";
 import { User } from "../src/models/User";
+import { Listing } from "../src/models/Listing";
 
 // These tests need MongoDB. Locally: `docker compose up -d` in the repo root.
 const TEST_DB =
@@ -43,11 +44,27 @@ beforeEach(async () => {
 
 const as = (userId: string) => ({ "x-user-id": userId });
 
+// Creates (or reuses) the test listing, sold by `seller`.
+async function ensureListing(seller = sam, overrides: Record<string, unknown> = {}) {
+  await Listing.findByIdAndUpdate(
+    listingId,
+    {
+      title: "Calculus textbook",
+      description: "9th edition, a few notes in pencil.",
+      price: 45,
+      category: "Textbooks",
+      condition: "good",
+      seller,
+      status: "active",
+      ...overrides,
+    },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
+}
+
 async function startConversation(buyer = alex, seller = sam) {
-  return request(app)
-    .post("/api/conversations")
-    .set(as(buyer))
-    .send({ listingId, sellerId: seller, listingTitle: "Calculus textbook" });
+  await ensureListing(seller);
+  return request(app).post("/api/conversations").set(as(buyer)).send({ listingId });
 }
 
 describe("conversations", () => {
@@ -79,6 +96,45 @@ describe("conversations", () => {
     const theirs = await request(app).get("/api/conversations").set(as(jordan));
     assert.equal(mine.body.length, 1);
     assert.equal(theirs.body.length, 0);
+  });
+  it("takes the seller and title from the listing, not the request", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    await ensureListing(sam);
+    const res = await request(app)
+      .post("/api/conversations")
+      .set(as(alex))
+      .send({ listingId, sellerId: jordan, listingTitle: "Something else" });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.seller, sam);
+    assert.equal(res.body.listingTitle, "Calculus textbook");
+  });
+
+  it("returns 404 for a listing that does not exist", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const res = await request(app)
+      .post("/api/conversations")
+      .set(as(alex))
+      .send({ listingId: new mongoose.Types.ObjectId().toString() });
+    assert.equal(res.status, 404);
+  });
+
+  it("does not start new chats about sold listings", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    await ensureListing(sam, { status: "sold" });
+    const res = await request(app).post("/api/conversations").set(as(alex)).send({ listingId });
+    assert.equal(res.status, 400);
+  });
+
+  it("includes both people's names in the inbox", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    await User.create([
+      { _id: alex, netId: "names-alex", name: "Alex Student" },
+      { _id: sam, netId: "names-sam", name: "Sam Seller" },
+    ]);
+    await startConversation(alex, sam);
+    const inbox = await request(app).get("/api/conversations").set(as(sam));
+    assert.equal(inbox.body[0].buyerName, "Alex Student");
+    assert.equal(inbox.body[0].sellerName, "Sam Seller");
   });
 });
 
@@ -165,10 +221,8 @@ describe("real-time delivery", () => {
       samSocket.on("message:new", resolve)
     );
 
-    const convo = await request(baseUrl)
-      .post("/api/conversations")
-      .set(as(alex))
-      .send({ listingId, sellerId: sam, listingTitle: "Desk lamp" });
+    await ensureListing(sam);
+    const convo = await request(baseUrl).post("/api/conversations").set(as(alex)).send({ listingId });
     await request(baseUrl)
       .post(`/api/conversations/${convo.body._id}/messages`)
       .set(as(alex))

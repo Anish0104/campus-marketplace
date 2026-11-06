@@ -17,7 +17,7 @@ import PageHeader from "@/components/PageHeader";
 import ChatThread from "./ChatThread";
 import ConversationList from "./ConversationList";
 import MessageComposer from "./MessageComposer";
-import { listConversations, listMessages, sendMessage } from "@/lib/messages";
+import { listConversations, listMessages, sendMessage, otherPersonName } from "@/lib/messages";
 import { getSocket } from "@/lib/socket";
 import type { Conversation, Message } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
@@ -111,7 +111,7 @@ export default function MessagesView() {
   }
 
   const selected = conversations?.find((c) => c._id === selectedId) ?? null;
-  const otherName = selected ? "Rutgers student" : "";
+  const otherName = selected ? otherPersonName(selected, user.id) : "";
 
   return (
     <>
