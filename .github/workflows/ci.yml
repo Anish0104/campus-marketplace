@@ -7,13 +7,19 @@ on:
 
 jobs:
   server:
-    runs-on: ubuntu-latest
+    # MongoDB 8 cannot start on kernels >= 6.19 (SERVER-121912).
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: server
     services:
       mongo:
         image: mongo:8
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
         ports:
           - 27017:27017
     env:
