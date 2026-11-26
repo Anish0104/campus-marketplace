@@ -101,3 +101,32 @@ export type ListingPhotoUpload = {
 
 export type ManagedUser = User & { _id: string; suspended: boolean };
 export type MarketplaceRules = { content: string; updatedAt: string | null };
+
+/** Moderation (Kunal). Keep in sync with server/src/models/Flag.ts. */
+export const FLAG_REASONS = ["scam", "prohibited", "offensive", "other"] as const;
+export type FlagReason = (typeof FLAG_REASONS)[number];
+export type FlagTargetType = "listing" | "user";
+export type FlagStatus = "open" | "dismissed" | "actioned";
+
+/** The four reasons as shown on the Report dialog. */
+export const FLAG_REASON_LABELS: Record<FlagReason, string> = {
+  scam: "Scam or fraud",
+  prohibited: "Prohibited item",
+  offensive: "Offensive or abusive",
+  other: "Something else",
+};
+
+/**
+ * One report in the admin queue. `target` is populated with a preview of the
+ * reported listing or user, and is null when that item no longer exists.
+ */
+export type QueuedFlag = {
+  _id: string;
+  targetType: FlagTargetType;
+  target: { _id: string; title?: string; status?: string; name?: string; suspended?: boolean } | null;
+  reporter: { _id: string; name: string } | null;
+  reason: FlagReason;
+  note: string;
+  status: FlagStatus;
+  createdAt: string;
+};

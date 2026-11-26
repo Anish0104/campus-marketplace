@@ -11,6 +11,7 @@ import { usersRouter } from "./routes/users";
 
 import { adminRouter } from "./routes/admin";
 import { rulesRouter } from "./routes/rules";
+import { flagsRouter } from "./routes/flags";
 
 export function createApp() {
   const app = express();
@@ -69,6 +70,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/rules", rulesRouter);
+  app.use("/api/flags", flagsRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/listings", feedRouter); // GET / and /categories; must come before /:id
