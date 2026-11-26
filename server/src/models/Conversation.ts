@@ -13,6 +13,10 @@ const conversationSchema = new Schema(
       sender: { type: Schema.Types.ObjectId, ref: "User" },
       sentAt: { type: Date },
     },
+    // When each person last opened this chat. A chat is unread for someone when
+    // the last message is from the other person and arrived after this time.
+    buyerLastReadAt: { type: Date, default: null },
+    sellerLastReadAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -27,6 +31,11 @@ export const Conversation = model("Conversation", conversationSchema);
 
 export function isParticipant(conversation: ConversationDoc, userId: string) {
   return conversation.buyer.equals(userId) || conversation.seller.equals(userId);
+}
+
+/** The field that stores when this user last read the conversation. */
+export function lastReadField(conversation: ConversationDoc, userId: string) {
+  return conversation.buyer.equals(userId) ? "buyerLastReadAt" : "sellerLastReadAt";
 }
 
 export function otherParticipant(conversation: ConversationDoc, userId: string) {

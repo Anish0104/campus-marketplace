@@ -32,6 +32,8 @@ export type Conversation = {
   buyerName?: string;
   sellerName?: string;
   lastMessage?: { body: string; sender: string; sentAt: string };
+  buyerLastReadAt?: string | null;
+  sellerLastReadAt?: string | null;
   updatedAt: string;
 };
 

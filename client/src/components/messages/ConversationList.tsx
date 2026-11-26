@@ -1,15 +1,26 @@
 "use client";
 
 import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { initials } from "@/lib/format";
 import RelativeTime from "@/components/RelativeTime";
-import { otherPersonName } from "@/lib/messages";
+import { isUnread, otherPersonName } from "@/lib/messages";
 import type { Conversation } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
+
+// Text for screen readers only.
+const visuallyHidden = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+} as const;
 
 type Props = {
   conversations: Conversation[];
@@ -27,6 +38,7 @@ export default function ConversationList({ conversations, currentUserId, selecte
           ? `${c.lastMessage.sender === currentUserId ? "You: " : ""}${c.lastMessage.body}`
           : "No messages yet";
         const selected = c._id === selectedId;
+        const unread = isUnread(c, currentUserId) && !selected;
 
         return (
           <ListItemButton
@@ -51,17 +63,38 @@ export default function ConversationList({ conversations, currentUserId, selecte
             </Avatar>
             <Stack sx={{ minWidth: 0, flexGrow: 1 }}>
               <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
-                <Typography sx={{ fontWeight: 650 }} noWrap>
+                <Typography sx={{ fontWeight: unread ? 800 : 650 }} noWrap>
                   {name}
+                  {unread && (
+                    <Box component="span" sx={visuallyHidden}>
+                      , unread
+                    </Box>
+                  )}
                 </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary", flexShrink: 0 }}>
-                  <RelativeTime iso={c.lastMessage?.sentAt ?? c.updatedAt} />
-                </Typography>
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexShrink: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: unread ? tokens.scarlet : "text.secondary", fontWeight: unread ? 700 : 400 }}
+                  >
+                    <RelativeTime iso={c.lastMessage?.sentAt ?? c.updatedAt} />
+                  </Typography>
+                  {unread && (
+                    <Box
+                      component="span"
+                      aria-hidden="true"
+                      sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: tokens.scarlet }}
+                    />
+                  )}
+                </Stack>
               </Stack>
               <Typography variant="body2" sx={{ color: tokens.raritan, fontWeight: 600 }} noWrap>
                 {c.listingTitle}
               </Typography>
-              <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              <Typography
+                variant="body2"
+                sx={{ color: unread ? tokens.ink : "text.secondary", fontWeight: unread ? 650 : 400 }}
+                noWrap
+              >
                 {preview}
               </Typography>
             </Stack>
