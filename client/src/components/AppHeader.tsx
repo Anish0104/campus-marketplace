@@ -16,6 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { useCurrentUser } from "./CurrentUserProvider";
+import NotificationBell from "./NotificationBell";
 import { useHydrated } from "@/lib/useHydrated";
 import { useUnreadCount } from "@/lib/useUnreadCount";
 import { tokens } from "@/theme/tokens";
@@ -112,6 +113,7 @@ export default function AppHeader() {
 
           {!loading && user ? (
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <NotificationBell key={user.id} userId={user.id} />
               <Typography variant="body2" sx={{ display: { xs: "none", sm: "block" }, color: tokens.muted }}>
                 {user.name}
               </Typography>

@@ -7,6 +7,7 @@ import { healthRouter } from "./routes/health";
 import { conversationsRouter } from "./routes/conversations";
 import { feedRouter } from "./routes/feed";
 import { listingsRouter } from "./routes/listings";
+import { notificationsRouter } from "./routes/notifications";
 import { usersRouter } from "./routes/users";
 
 import { adminRouter } from "./routes/admin";
@@ -73,6 +74,7 @@ export function createApp() {
   app.use("/api/flags", flagsRouter);
   app.use("/api/health", healthRouter);
   app.use("/api/conversations", conversationsRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/listings", feedRouter); // GET / and /categories; must come before /:id
   app.use("/api/listings", listingsRouter);
   app.use("/api/users", usersRouter);

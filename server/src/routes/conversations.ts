@@ -6,6 +6,7 @@ import { Conversation, isParticipant, lastReadField, otherParticipant, type Conv
 import { Listing } from "../models/Listing";
 import { User } from "../models/User";
 import { Message, MESSAGE_MAX_LENGTH } from "../models/Message";
+import { Notification } from "../models/Notification";
 import { isSuspended } from "../services/suspension";
 
 export const conversationsRouter = Router();
@@ -160,7 +161,18 @@ conversationsRouter.post("/:id/messages", async (req, res) => {
     .to(`user:${recipientId}`)
     .emit("message:new", { message, conversation: (await withNames([conversation]))[0] });
 
-  // TODO (Anand): notify(recipientId, "new_message", { conversationId: conversation.id })
+  try {
+    await Notification.create({
+      recipient: recipientId,
+      type: "new_message",
+      text: `New message about ${conversation.listingTitle}`,
+      link: `/messages?c=${conversation.id}`,
+    });
+    io?.to(`user:${recipientId}`).emit("notification:new");
+  } catch (error) {
+    // The message is already saved. Keep the send successful to avoid duplicate retries.
+    console.error(`Could not notify recipient of message ${message.id}`, error);
+  }
 
   res.status(201).json(message);
 });

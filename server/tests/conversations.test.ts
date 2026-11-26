@@ -158,6 +158,30 @@ describe("messages", () => {
     assert.equal(inbox.body[0].lastMessage.body, "Is this still available?");
   });
 
+  it("creates an unread alert only for the message recipient", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const { body: conversation } = await startConversation();
+    const sent = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(as(alex))
+      .send({ body: "Is this available?" });
+    assert.equal(sent.status, 201);
+
+    const alerts = "/api/notifications";
+    const recipient = await request(app).get(alerts).set(as(sam)).expect(200);
+    assert.equal(recipient.body.length, 1);
+    const [alert] = recipient.body;
+    assert.equal(alert.type, "new_message");
+    assert.equal(alert.link, `/messages?c=${conversation._id}`);
+    assert.equal(alert.read, false);
+
+    await request(app).get(alerts).set(as(alex)).expect(200, []);
+    await request(app).get(`${alerts}/unread-count`).set(as(sam)).expect(200, { count: 1 });
+    await request(app).patch(`${alerts}/${alert._id}/read`).set(as(alex)).expect(404);
+    await request(app).patch(`${alerts}/${alert._id}/read`).set(as(sam)).expect(200);
+    await request(app).get(`${alerts}/unread-count`).set(as(sam)).expect(200, { count: 0 });
+  });
+
   it("rejects empty and too-long messages", async (t) => {
     if (!dbReady) return t.skip("no MongoDB");
     const convo = await startConversation();
