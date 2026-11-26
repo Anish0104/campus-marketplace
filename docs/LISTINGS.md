@@ -1,7 +1,7 @@
-# Listings: Stages 1, 2 and 3
+# Listings: creation, photos and seller management
 
-All listing endpoints require the `requireUser` middleware and a valid marketplace
-session cookie. `req.userId` is loaded from the server-side account record. Create
+Listing mutations require the `requireUser` middleware and a valid marketplace
+session cookie. Feed, category and active/sold detail reads are public. `req.userId` is loaded from the server-side account record. Create
 an account or sign in through the app before testing authenticated listing
 endpoints; the project has no demo-account login. The optional prepared-account
 seed is documented in [Authentication](AUTH.md).
@@ -134,8 +134,8 @@ owner can retry before expiry. If the database cannot confirm absence, the claim
 is retained to avoid allowing reuse of an ambiguously successful write.
 
 `GET /api/listings/:id` returns **200** with the same document shape to any
-signed-in user. Invalid ObjectIds return **400**; missing documents return **404**.
-It does not filter by status. Invalid creation input returns **400**.
+viewer for active or sold listings. Invalid ObjectIds return **400**; missing or
+removed documents return **404**. Invalid creation input returns **400**.
 The feed endpoint `GET /api/listings` is documented in [FEED.md](FEED.md).
 
 ## Storage configuration
@@ -193,8 +193,8 @@ Limitations:
 - A very late provider completion after deletion, prolonged database outages, or
   provider unavailability can still leave assets requiring Cloudinary-console
   reconciliation. Cleanup retries are best effort, not a distributed transaction.
-- No full listing deletion, photo replacement, private delivery or moderation is
-  added here. Existing Stage 1 URL-only records are preserved; they have no upload
+- Seller deletion is soft deletion, retaining attached photos. Photo replacement,
+  private delivery and moderation actions are outside this feature. Existing Stage 1 URL-only records are preserved; they have no upload
   ownership metadata and must not be treated as verified owned Cloudinary assets.
 
 ## Stage 3: frontend usage and integration
@@ -236,8 +236,8 @@ Signing out discards the draft; if it happens during an upload, the old form doe
 not proceed to creation. A listing request already sent may still save under the
 original account.
 
-The detail page `/listings/[id]` fetches `GET /api/listings/:id` using the current
-account. Requests are cancelled on route/account changes and stale results are
+The detail page `/listings/[id]` fetches public `GET /api/listings/:id` and uses
+the current session account to show seller controls. Requests are cancelled on route/account changes and stale results are
 not displayed. It shows price, condition, category, status, full plain-text
 description, created date, and seller **ObjectId**; no seller name is invented.
 Photos have a main image and keyboard-accessible selectable thumbnails, with
@@ -254,10 +254,9 @@ to `id`, `photos[0]` to optional `imageUrl`, and copies the other card fields.
 and ListingGrid contracts are unchanged.
 
 Newly created listings appear at the top of the feed on the home page; see
-[FEED.md](FEED.md). Anish's messaging
-flow still needs to load Listing and derive seller/title on the server instead
-of trusting conversation request fields before wiring a contact-seller action.
-No chat action, edit, delete, mark-sold or other teammates' features are added.
+[FEED.md](FEED.md). Anish's integrated messaging derives seller/title from the
+listing on the server. The detail page preserves its Message seller button and
+photo gallery alongside the owner controls documented below.
 
 ### Manual end-to-end verification
 
@@ -278,8 +277,8 @@ With MongoDB, server (port 4000), and client (port 3000) running:
 6. Open `/listings/not-an-id` and `/listings/ffffffffffffffffffffffff` to check
    invalid-link and not-found states. Temporarily stop the API or use DevTools
    offline mode to verify retry/error behavior, then restore it and try again.
-7. During submission verify inputs and the submit button are disabled. Do not
-   switch development accounts until completion when testing a real upload.
+7. During submission verify inputs and the submit button are disabled. Signing
+   out discards the current draft; sign back in through the normal login flow.
 8. Real Cloudinary connectivity is a manual check: automated tests mock it. Keep
    the existing server credentials configured privately; no frontend secret is
    required. Schedule the cleanup command as described above.
@@ -297,3 +296,124 @@ and authentication tests still run. Cleanup tests only call mocked deletion.
 
 Frontend checks: run `npm run lint` and `npm run build` inside `client/`.
 There is no existing frontend test runner; no new framework was introduced.
+
+
+## Seller management API
+
+All three routes use `requireUser` and derive the seller from `req.userId`, which
+is populated from the cookie session and current database account. Suspended
+accounts receive **403**; missing/expired sessions receive **401**. There is no
+browser `x-user-id` fallback and no administrator bypass on seller routes.
+
+| Endpoint | JSON request | Success |
+| --- | --- | --- |
+| `PATCH /api/listings/:id` | Nonempty subset of `title`, `description`, `price`, `category`, `condition` | **200**, updated raw Listing document |
+| `PATCH /api/listings/:id/sold` | No body, or `{}` | **200**, sold raw Listing document |
+| `DELETE /api/listings/:id` | No body, or `{}` | **200**, removed raw Listing document |
+
+Example edit request:
+
+```json
+{ "title": "Calculus textbook, 9th edition", "price": 18 }
+```
+
+Responses use the same document shape as creation, including `_id`, `seller`,
+`photos`, `status`, `createdAt` and `updatedAt`. Omitted editable fields remain
+unchanged. Text is trimmed. Limits, finite nonnegative numeric price and condition
+values use the existing `listingValidationError` helper and Mongoose validators.
+The helper's partial mode is used only by seller edits; creation/admin validation
+continues to validate complete fields. Unknown fields are rejected, including
+`seller`, `status`, `_id`, `id`, timestamps, `__v`, `photos`, `photoUploadId` and
+MongoDB operators. No photo upload or replacement occurs during an edit.
+
+Errors retain `{ "error": "Helpful message" }`:
+
+- **400**: invalid ObjectId, empty edit, invalid field value, unsupported field,
+  action with unexpected fields, array/non-object edit, or malformed JSON.
+- **401/403**: session/account restrictions as above.
+- **404**: missing listing, another seller's listing, or a status that disallows
+  the requested action. The common message is
+  `Listing not found or unavailable for this action.` No ownership information
+  is revealed by management requests.
+
+### Status transitions and concurrency
+
+| Starting state | Edit fields | Mark sold | Delete |
+| --- | --- | --- | --- |
+| `active` | `active` | `sold` | `removed` |
+| `sold` | `sold` | **200** no-op | `removed` |
+| `removed` | **404** | **404** | **200** no-op for owner |
+
+Writes use atomic `findOneAndUpdate` filters containing ID, authenticated seller
+and allowed starting status. An edit or sold request cannot resurrect a listing
+removed by a concurrent seller/moderation action. Repeated sold/delete requests
+return the existing document without changing `updatedAt`. There is no seller
+relist/restore endpoint. The existing administrator endpoint can restore records;
+concurrent administrator conflict resolution remains that feature's responsibility.
+Edits to the same field use last-write-wins semantics.
+
+### Soft deletion and photo retention
+
+Delete only sets `status=removed`; it never deletes Listing, PhotoUpload,
+Conversation, Message or Flag records and never contacts Cloudinary. Attached
+batches stay `attached`, so the existing abandoned-upload cleanup preserves them.
+Photo URLs remain publicly deliverable: deletion hides the marketplace listing,
+not the underlying provider asset. Legacy URL-only photos are also retained.
+Permanent erasure/private delivery would require a separate retention policy and
+reference audit with the teams responsible for messaging, moderation and favorites.
+Sold listings retain their detail pages and photos; removed detail URLs return
+404 even for the seller. Existing conversations remain usable from the inbox.
+New conversations remain restricted to active listings by Anish's existing route.
+
+Aryan's existing `status: active` feed/category filters and Santanu's existing
+profile filter already exclude sold/removed listings. Neither implementation was
+changed. There are no notification emissions or favorites changes in this work.
+Existing conversation title snapshots intentionally retain their original title.
+Anand can add status notifications later; Santanu can map removed favorites to
+unavailable when that integration is implemented. Kunal's Flag references survive
+soft deletion. Completed seller deletion returns the browser to `/`.
+
+### Seller interface and manual final demo
+
+On `/listings/[id]`, the authenticated owner sees **Edit listing**, **Mark as sold**
+(only when active), and **Delete listing**. Other viewers see no management
+controls. The prefilled MUI edit dialog validates fields, preserves photos and
+status, and updates detail data immediately after saving. Sold/delete dialogs
+explain the effect and require confirmation. A synchronous submission lock and
+busy buttons prevent duplicate requests. Failed requests preserve the dialog and
+show the API error. Controls reset on account/route changes and stale mutation
+results are ignored after unmount.
+
+With MongoDB, API and frontend running, use two normal Rutgers accounts:
+
+1. Sign in as seller A. Create a listing with two photos at **Sell an item**.
+   Verify the detail gallery and the listing in the public feed.
+2. Click **Edit listing**. Confirm fields are prefilled. Try blank title and
+   negative price, then save a new title and price. Confirm photos, seller and
+   status stay unchanged, and refresh to verify persistence.
+3. Click **Mark as sold**, cancel once, reopen and confirm. Check the Sold chip,
+   disabled availability/message behavior, preserved gallery and detail URL.
+   Return to the home feed and verify the item is excluded (including search).
+4. Create another listing. Click **Delete listing**, cancel once, then confirm.
+   Verify navigation to `/`, absence from the feed and a not-found state when
+   reopening the saved detail URL. Check the existing chat from the inbox if one
+   was started before deletion.
+5. Sign in as B and open A's active listing. Verify no management controls and
+   that messaging/gallery still work. Direct mutation requests with B's session
+   return 404. Sign out: feed and active/sold details remain public; mutations
+   return 401.
+6. At mobile and desktop widths, check the dialogs, long descriptions, inline
+   errors, keyboard focus, confirmation cancel buttons and gallery thumbnails.
+   Use DevTools offline mode to check error recovery and disabled submissions.
+   Reconnect and refresh before retrying an ambiguous network response.
+
+`server/tests/listingManagement.test.ts` uses actual registration cookies in its
+own `-listing-management` database and fails rather than skips if MongoDB is
+unavailable. It covers edits, ownership (including non-owner admins), sessions,
+invalid fields/IDs/body shapes, immutable fields, repeated terminal actions,
+feed/category/profile visibility, preserved references/photos, suspension and
+concurrent removal. Existing suites keep their established isolated test-only
+header fixtures; no authentication middleware behavior was changed.
+
+See [Anuj's final report draft](LISTINGS_FINAL_REPORT.md) for the report section
+and presentation script. Real browser/Cloudinary smoke testing remains manual.

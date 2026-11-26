@@ -1,5 +1,5 @@
 import { apiFetch } from "./api";
-import type { CreateListingInput, FeedListing, Listing, ListingPhotoUpload, ListingSummary } from "./types";
+import type { CreateListingInput, EditListingInput, FeedListing, Listing, ListingPhotoUpload, ListingSummary } from "./types";
 
 export const LISTING_LIMITS = { title: 120, description: 5000, category: 80, photos: 5, photoBytes: 5 * 1024 * 1024 };
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -16,6 +16,18 @@ export function createListing(body: CreateListingInput) {
 
 export function getListing(id: string, signal?: AbortSignal) {
   return apiFetch<Listing>(`/api/listings/${encodeURIComponent(id)}`, { signal });
+}
+
+export function editListing(id: string, body: EditListingInput) {
+  return apiFetch<Listing>(`/api/listings/${encodeURIComponent(id)}`, { method: "PATCH", body });
+}
+
+export function markListingSold(id: string) {
+  return apiFetch<Listing>(`/api/listings/${encodeURIComponent(id)}/sold`, { method: "PATCH" });
+}
+
+export function deleteListing(id: string) {
+  return apiFetch<Listing>(`/api/listings/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 /** Feed/cards can reuse this without inventing a seller name. */

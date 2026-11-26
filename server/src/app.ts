@@ -78,7 +78,12 @@ export function createApp() {
   app.use("/api/users", usersRouter);
 
   // Last resort: turn unexpected errors into a JSON 500 instead of an HTML page.
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    if (req.path.startsWith("/api/listings") && err && typeof err === "object" &&
+        "type" in err && err.type === "entity.parse.failed") {
+      res.status(400).json({ error: "Send a valid JSON object." });
+      return;
+    }
     console.error(err);
     res.status(500).json({ error: "Something went wrong on the server." });
   });

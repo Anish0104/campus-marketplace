@@ -67,3 +67,41 @@ listingsRouter.get("/:id", async (req, res) => {
   }
   res.json(listing);
 });
+
+// Scope every write by owner and current status in the database itself. A
+// concurrent removal cannot be undone by an edit or a mark-sold request.
+const editableFields = ["title", "description", "price", "category", "condition"];
+for (const action of ["edit", "sold", "remove"] as const) {
+  const method = action === "remove" ? "delete" : "patch";
+  const path = action === "sold" ? "/:id/sold" : "/:id";
+  listingsRouter[method](path, requireUser, async (req, res) => {
+    if (!isValidObjectId(req.params.id)) {
+      res.status(400).json({ error: "Listing id must be a valid MongoDB ObjectId." }); return;
+    }
+    const body = req.body ?? {};
+    if (typeof body !== "object" || Array.isArray(body) ||
+        (action === "edit" && !Object.keys(body).length) ||
+        Object.keys(body).some((field) => action !== "edit" || !editableFields.includes(field))) {
+      res.status(400).json({ error: action === "edit"
+        ? "Provide only title, description, price, category or condition to edit."
+        : "This action does not accept any fields." }); return;
+    }
+    if (action === "edit") {
+      const error = listingValidationError(body, true);
+      if (error) { res.status(400).json({ error }); return; }
+    }
+    const owner = { _id: req.params.id, seller: req.userId! };
+    const listing = await Listing.findOneAndUpdate({
+      ...owner, status: action === "sold" ? "active" : { $in: ["active", "sold"] },
+    }, { $set: action === "edit" ? body : { status: action === "sold" ? "sold" : "removed" } },
+    { returnDocument: "after", runValidators: true });
+    if (listing) { res.json(listing); return; }
+    // Repeating a terminal action is a successful no-op for its owner, without
+    // touching timestamps. Never reveal another seller's management records.
+    if (action !== "edit") {
+      const unchanged = await Listing.findOne({ ...owner, status: action === "sold" ? "sold" : "removed" });
+      if (unchanged) { res.json(unchanged); return; }
+    }
+    res.status(404).json({ error: "Listing not found or unavailable for this action." });
+  });
+}
