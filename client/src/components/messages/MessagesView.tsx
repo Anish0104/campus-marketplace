@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -17,7 +17,14 @@ import PageHeader from "@/components/PageHeader";
 import ChatThread from "./ChatThread";
 import ConversationList from "./ConversationList";
 import MessageComposer from "./MessageComposer";
-import { listConversations, listMessages, sendMessage, otherPersonName } from "@/lib/messages";
+import {
+  listConversations,
+  listMessages,
+  markConversationRead,
+  otherPersonName,
+  sendMessage,
+  withReadAt,
+} from "@/lib/messages";
 import { getSocket } from "@/lib/socket";
 import type { Conversation, Message } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
@@ -81,6 +88,32 @@ export default function MessagesView() {
       .catch((e: Error) => setError(e.message));
   }, [user, selectedId]);
 
+  // Marks the open chat as read (only while this tab is visible) and updates
+  // the inbox right away; the header badge refreshes from the server's event.
+  const selectedRef = useRef(selectedId);
+  useEffect(() => {
+    selectedRef.current = selectedId;
+  }, [selectedId]);
+  const markRead = useCallback(
+    (conversationId: string) => {
+      if (!user || document.visibilityState !== "visible") return;
+      markConversationRead(conversationId)
+        .then(({ readAt }) =>
+          setConversations((list) => list.map((c) => (c._id === conversationId ? withReadAt(c, user.id, readAt) : c)))
+        )
+        .catch(() => {});
+    },
+    [user, setConversations]
+  );
+
+  useEffect(() => {
+    if (!selectedId) return;
+    markRead(selectedId);
+    const onVisible = () => markRead(selectedId);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [selectedId, markRead]);
+
   // Live updates: new messages arrive over the socket for both people.
   useEffect(() => {
     if (!user) return;
@@ -88,12 +121,16 @@ export default function MessagesView() {
     const onNew = ({ message, conversation }: { message: Message; conversation: Conversation }) => {
       setConversations((list) => upsertConversation(list, conversation));
       addMessage(message);
+      // A reply arriving in the chat you have open counts as read.
+      if (message.conversation === selectedRef.current && message.sender !== user.id) {
+        markRead(message.conversation);
+      }
     };
     socket.on("message:new", onNew);
     return () => {
       socket.off("message:new", onNew);
     };
-  }, [user, setConversations, addMessage]);
+  }, [user, setConversations, addMessage, markRead]);
 
   async function handleSend(body: string) {
     if (!user || !selectedId) return;

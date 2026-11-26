@@ -2,7 +2,7 @@ import { Router } from "express";
 import { isValidObjectId } from "mongoose";
 import type { Server } from "socket.io";
 import { requireUser } from "../middleware/requireUser";
-import { Conversation, isParticipant, otherParticipant, type ConversationDoc } from "../models/Conversation";
+import { Conversation, isParticipant, lastReadField, otherParticipant, type ConversationDoc } from "../models/Conversation";
 import { Listing } from "../models/Listing";
 import { User } from "../models/User";
 import { Message, MESSAGE_MAX_LENGTH } from "../models/Message";
@@ -32,6 +32,19 @@ conversationsRouter.get("/", async (req, res) => {
     .sort({ updatedAt: -1 })
     .limit(100);
   res.json(await withNames(conversations));
+});
+
+// GET /api/conversations/unread-count: how many of my chats have a new message
+// from the other person since I last opened them. Drives the Messages badge.
+conversationsRouter.get("/unread-count", async (req, res) => {
+  const me = req.userId!;
+  const unreadFor = (role: "buyer" | "seller") => ({
+    [role]: me,
+    "lastMessage.sender": { $exists: true, $ne: me },
+    $expr: { $gt: ["$lastMessage.sentAt", { $ifNull: [`$${role}LastReadAt`, new Date(0)] }] },
+  });
+  const count = await Conversation.countDocuments({ $or: [unreadFor("buyer"), unreadFor("seller")] });
+  res.json({ count });
 });
 
 // POST /api/conversations: start (or reopen) a conversation about a listing.
@@ -137,6 +150,8 @@ conversationsRouter.post("/:id/messages", async (req, res) => {
   });
 
   conversation.lastMessage = { body, sender: message.sender, sentAt: message.createdAt };
+  // Sending counts as reading: your own chat is never unread for you.
+  conversation.set(lastReadField(conversation, senderId), message.createdAt);
   await conversation.save();
 
   // Push the message to both people in real time.
@@ -148,4 +163,27 @@ conversationsRouter.post("/:id/messages", async (req, res) => {
   // TODO (Anand): notify(recipientId, "new_message", { conversationId: conversation.id })
 
   res.status(201).json(message);
+});
+
+// POST /api/conversations/:id/read: mark a chat as read when its owner opens it.
+conversationsRouter.post("/:id/read", async (req, res) => {
+  const userId = req.userId!;
+  const conversation = await loadOwnConversation(req.params.id, userId);
+  if (!conversation) {
+    res.status(404).json({ error: "Conversation not found." });
+    return;
+  }
+  const readAt = new Date();
+  // timestamps: false so opening a chat doesn't move it to the top of the inbox.
+  await Conversation.updateOne(
+    { _id: conversation._id },
+    { $set: { [lastReadField(conversation, userId)]: readAt } },
+    { timestamps: false }
+  );
+
+  // Tell this user's other open tabs so their Messages badge updates too.
+  const io: Server | undefined = req.app.get("io");
+  io?.to(`user:${userId}`).emit("conversation:read", { conversationId: conversation.id, readAt });
+
+  res.json({ conversationId: conversation.id, readAt });
 });

@@ -179,6 +179,59 @@ describe("messages", () => {
   });
 });
 
+describe("unread count", () => {
+  const unread = async (userId: string) =>
+    (await request(app).get("/api/conversations/unread-count").set(as(userId))).body.count;
+  const send = (conversationId: string, userId: string, body: string) =>
+    request(app).post(`/api/conversations/${conversationId}/messages`).set(as(userId)).send({ body });
+
+  it("counts chats with a new message from the other person", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const convo = await startConversation(alex, sam);
+    assert.equal(await unread(sam), 0);
+    await send(convo.body._id, alex, "Is this still available?");
+    await send(convo.body._id, alex, "I can pick it up today.");
+    assert.equal(await unread(sam), 1, "one chat, even with two new messages");
+    assert.equal(await unread(alex), 0, "your own messages never count as unread");
+  });
+
+  it("clears when the chat is opened, and comes back on a new message", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const convo = await startConversation(alex, sam);
+    await send(convo.body._id, alex, "Hello");
+    const read = await request(app).post(`/api/conversations/${convo.body._id}/read`).set(as(sam));
+    assert.equal(read.status, 200);
+    assert.equal(await unread(sam), 0);
+    await send(convo.body._id, alex, "Still there?");
+    assert.equal(await unread(sam), 1);
+  });
+
+  it("replying marks the chat as read for the person replying", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const convo = await startConversation(alex, sam);
+    await send(convo.body._id, alex, "Hello");
+    await send(convo.body._id, sam, "Hi! Yes, it is.");
+    assert.equal(await unread(sam), 0);
+    assert.equal(await unread(alex), 1);
+  });
+
+  it("opening a chat does not move it to the top of the inbox", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const convo = await startConversation(alex, sam);
+    const before = (await request(app).get("/api/conversations").set(as(sam))).body[0].updatedAt;
+    await request(app).post(`/api/conversations/${convo.body._id}/read`).set(as(sam));
+    const after = (await request(app).get("/api/conversations").set(as(sam))).body[0].updatedAt;
+    assert.equal(after, before);
+  });
+
+  it("does not let outsiders mark a chat as read", async (t) => {
+    if (!dbReady) return t.skip("no MongoDB");
+    const convo = await startConversation(alex, sam);
+    const res = await request(app).post(`/api/conversations/${convo.body._id}/read`).set(as(jordan));
+    assert.equal(res.status, 404);
+  });
+});
+
 describe("real-time delivery", () => {
   let httpServer: HttpServer;
   let baseUrl: string;
