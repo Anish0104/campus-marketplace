@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AppBar from "@mui/material/AppBar";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -15,6 +16,8 @@ import AddIcon from "@mui/icons-material/Add";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { useCurrentUser } from "./CurrentUserProvider";
+import { useHydrated } from "@/lib/useHydrated";
+import { useUnreadCount } from "@/lib/useUnreadCount";
 import { tokens } from "@/theme/tokens";
 
 const NAV = [
@@ -25,8 +28,24 @@ const NAV = [
 /** Top navigation shown on every page (rendered in app/layout.tsx). */
 export default function AppHeader() {
   const pathname = usePathname();
-  const { user, loading, logout } = useCurrentUser();
+  const { user: currentUser, loading: userLoading, logout } = useCurrentUser();
+  // The server renders this header before anyone is signed in. Until React has
+  // attached to that HTML, render the same signed-out shell; then show the real state.
+  const hydrated = useHydrated();
+  const user = hydrated ? currentUser : null;
+  const loading = !hydrated || userLoading;
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const unread = useUnreadCount(user?.id);
+  const navLabel = (item: (typeof NAV)[number]) =>
+    item.href === "/messages" && unread > 0 ? `${item.label}, ${unread} unread` : item.label;
+  const withBadge = (item: (typeof NAV)[number], node: React.ReactNode) =>
+    item.href === "/messages" ? (
+      <Badge badgeContent={unread > 0 ? unread : null} max={99} color="primary">
+        {node}
+      </Badge>
+    ) : (
+      node
+    );
 
   return (
     <AppBar
@@ -60,12 +79,14 @@ export default function AppHeader() {
                 href={item.href}
                 color="inherit"
                 aria-current={isActive(item.href) ? "page" : undefined}
+                aria-label={navLabel(item)}
                 sx={{
                   color: isActive(item.href) ? tokens.ink : tokens.muted,
                   bgcolor: isActive(item.href) ? tokens.mist : "transparent",
+                  "& .MuiBadge-badge": { right: -10, top: 2 },
                 }}
               >
-                {item.label}
+                {withBadge(item, item.label)}
               </Button>
             ))}
           </Stack>
@@ -76,14 +97,14 @@ export default function AppHeader() {
 
           <Stack direction="row" spacing={0.5} sx={{ display: { xs: "flex", md: "none" } }}>
             {NAV.filter((item) => item.href !== "/messages" || user).map((item) => (
-              <Tooltip key={item.href} title={item.label}>
+              <Tooltip key={item.href} title={navLabel(item)}>
                 <IconButton
                   component={Link}
                   href={item.href}
-                  aria-label={item.label}
+                  aria-label={navLabel(item)}
                   sx={{ color: isActive(item.href) ? tokens.scarlet : tokens.muted }}
                 >
-                  {item.icon}
+                  {withBadge(item, item.icon)}
                 </IconButton>
               </Tooltip>
             ))}

@@ -27,3 +27,24 @@ export const sendMessage = (conversationId: string, body: string) =>
     method: "POST",
     body: { body },
   });
+
+/** How many chats have a new message from the other person. Drives the Messages badge. */
+export const getUnreadCount = () => apiFetch<{ count: number }>("/api/conversations/unread-count");
+
+/** Marks a chat as read for the signed-in user. */
+export const markConversationRead = (conversationId: string) =>
+  apiFetch<{ conversationId: string; readAt: string }>(`/api/conversations/${conversationId}/read`, {
+    method: "POST",
+  });
+
+/** True when the last message is from the other person and arrived after you last opened the chat. */
+export function isUnread(c: Conversation, currentUserId: string) {
+  if (!c.lastMessage?.sentAt || c.lastMessage.sender === currentUserId) return false;
+  const lastRead = c.buyer === currentUserId ? c.buyerLastReadAt : c.sellerLastReadAt;
+  return !lastRead || new Date(c.lastMessage.sentAt) > new Date(lastRead);
+}
+
+/** A copy of the chat with your read time set, used right after you open it. */
+export function withReadAt(c: Conversation, currentUserId: string, readAt: string): Conversation {
+  return c.buyer === currentUserId ? { ...c, buyerLastReadAt: readAt } : { ...c, sellerLastReadAt: readAt };
+}

@@ -12,6 +12,7 @@ import ConditionChip from "@/components/ConditionChip";
 import EmptyState from "@/components/EmptyState";
 import MessageSellerButton from "@/components/messages/MessageSellerButton";
 import ListingManagement from "@/components/ListingManagement";
+import ReportButton from "@/components/ReportButton";
 import { ApiError } from "@/lib/api";
 import { getListing } from "@/lib/listings";
 import type { Listing } from "@/lib/types";
@@ -70,6 +71,7 @@ function ListingDetail() {
               <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user?.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
               <Typography component="dt">Listed</Typography><Typography component="dd"><time dateTime={listing.createdAt}>{new Date(listing.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></Typography>
             </Box>
+            <ReportButton targetType="listing" targetId={listing._id} ownerId={listing.seller} />
             {!user && <Alert severity="info">Browsing as a viewer. <Link href={`/login?returnTo=${encodeURIComponent(`/listings/${id}`)}`}>Sign in</Link> to participate in the marketplace.</Alert>}
             <Divider />
             <Typography variant="h4" component="h2">Description</Typography>
