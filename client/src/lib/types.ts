@@ -99,5 +99,7 @@ export type ListingPhotoUpload = {
   photos: { url: string; publicId: string }[];
 };
 
+export type EditListingInput = Partial<Pick<Listing, "title" | "description" | "price" | "category" | "condition">>;
+
 export type ManagedUser = User & { _id: string; suspended: boolean };
 export type MarketplaceRules = { content: string; updatedAt: string | null };

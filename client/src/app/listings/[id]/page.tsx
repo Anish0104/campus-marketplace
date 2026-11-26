@@ -11,6 +11,7 @@ import PriceTag from "@/components/PriceTag";
 import ConditionChip from "@/components/ConditionChip";
 import EmptyState from "@/components/EmptyState";
 import MessageSellerButton from "@/components/messages/MessageSellerButton";
+import ListingManagement from "@/components/ListingManagement";
 import { ApiError } from "@/lib/api";
 import { getListing } from "@/lib/listings";
 import type { Listing } from "@/lib/types";
@@ -63,6 +64,7 @@ function ListingDetail() {
             </Stack>
             {listing.status !== "active" && <Alert severity="info">This listing is {listing.status} and is no longer available.</Alert>}
             <MessageSellerButton listingId={listing._id} sellerId={listing.seller} available={listing.status === "active"} />
+            {user?.id === listing.seller && listing.status !== "removed" && <ListingManagement key={`${key}:${listing._id}`} listing={listing} onUpdated={(updated) => setResult({ key, listing: updated })} />}
             <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: 2, rowGap: 1.5, "& dd": { m: 0, overflowWrap: "anywhere" }, "& dt": { color: "text.secondary" } }}>
               <Typography component="dt">Category</Typography><Typography component="dd">{listing.category}</Typography>
               <Typography component="dt">Seller</Typography><Typography component="dd"><MuiLink component={Link} href={`/users/${listing.seller}`}>{listing.seller === user?.id ? "View your profile" : "View seller profile"}</MuiLink></Typography>
