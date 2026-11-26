@@ -15,6 +15,7 @@ import { ApiError } from "@/lib/api";
 import { initials } from "@/lib/format";
 import { toListingSummary } from "@/lib/listings";
 import type { PublicProfile } from "@/lib/types";
+import ReportButton from "@/components/ReportButton";
 import { formatMemberSince, getProfile } from "@/lib/users";
 import { tokens } from "@/theme/tokens";
 
@@ -95,6 +96,11 @@ function Profile() {
               <Typography component="dt">Member since</Typography>
               <Typography component="dd"><time dateTime={profile.memberSince}>{formatMemberSince(profile.memberSince)}</time></Typography>
             </Box>
+            {!isMe && (
+              <Box sx={{ mt: 1.5 }}>
+                <ReportButton targetType="user" targetId={profile.id} />
+              </Box>
+            )}
           </Box>
         </Stack>
       </Paper>

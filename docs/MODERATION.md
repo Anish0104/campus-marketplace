@@ -1,9 +1,8 @@
 # Flagging and admin review
 
 Moderation lets a student report a listing or another user, and lets an admin work
-through those reports. This document covers the midterm scope: the `Flag` model and
-the `User` fields moderation depends on. The `POST /api/flags` route, the Report
-button and the admin queue page are after-midterm work.
+through those reports. The `Flag` model, the reporting route, the Report button, the
+admin queue and the three admin actions are all implemented.
 
 ## Flag schema
 
@@ -56,6 +55,44 @@ Moderation reads two of its fields:
 because an account may authenticate by NetID or by password but not necessarily
 both. Code that looks a user up by `netId` must handle the field being absent.
 
+## API
+
+### `POST /api/flags`
+
+Any signed-in student may report. The reporter always comes from the session, so a
+`reporter` in the body is ignored.
+
+```json
+{ "targetType": "listing", "target": "<id>", "reason": "scam", "note": "optional" }
+```
+
+Returns **201** with `{ id, status, createdAt }`.
+
+- **400** unknown `targetType` or `reason`, malformed id, note over 1000 characters,
+  or reporting your own listing or account.
+- **401** signed out. **404** the reported item does not exist.
+- **409** you already reported this item. The unique index is the enforcement; the
+  route turns the duplicate-key error into a clear message and reveals nothing about
+  who else has reported it.
+
+### `GET /api/admin/flags?status=open&page=1`
+
+Admin only. Open flags newest first, 20 per page, with `reporter` and `target`
+populated for the preview. `status` accepts `open`, `dismissed` or `actioned`.
+`target` is null when the reported item has since been deleted.
+
+### `PATCH /api/admin/flags/:id`
+
+Admin only. Body is exactly `{ "action": "dismiss" | "remove" | "suspend" }`.
+
+The flag is claimed with a filter on `status: "open"`, so two admins acting at once
+cannot both apply a side effect to the same report. If the side effect then fails,
+the flag is returned to the queue rather than left closed with nothing done.
+
+- **403** not an admin. **404** no open flag with that id, including one already
+  resolved. **409** the action cannot be carried out: removing a listing for a report
+  about a user, or suspending an administrator.
+
 ## Admin actions
 
 Every action closes the flag by writing `status`, `resolvedBy` and `resolvedAt`.
@@ -64,11 +101,23 @@ Every action closes the flag by writing `status`, `resolvedBy` and `resolvedAt`.
 | --- | --- | --- |
 | Dismiss | `dismissed` | None; the report was not valid |
 | Remove listing | `actioned` | `Listing.status = "removed"` |
-| Suspend user | `actioned` | `User.suspended = true`, and their listings are hidden |
+| Suspend user | `actioned` | `User.suspended = true`, their active listings become `removed`, and their sockets are disconnected |
 
 Removing a listing drops it from Aryan's feed and shows it as unavailable in
 Santanu's saved list. Suspending a user blocks sign-in and messaging. Anand creates a
 notification from the resolution.
+
+Suspending from a report about a *listing* suspends that listing's seller.
+Administrators cannot be suspended, matching `PATCH /api/admin/users/:id`.
+
+## Pages
+
+- **Report button** (`client/src/components/ReportButton.tsx`) on listing detail and
+  on profiles. Hidden from signed-out visitors and from the item's own owner. A
+  duplicate report is reported as success, because to the reporter it already is.
+- **Admin queue**: the "Flagged" tab on `/admin`, which opens first. Tabs for open,
+  dismissed and actioned; each open report offers Dismiss, Remove listing (listing
+  reports only) and Suspend, each behind a confirmation dialog.
 
 ## Wireframe and schema diagram
 
@@ -79,7 +128,8 @@ Both links are private until shared from each page's Share menu.
 
 ## Tests
 
-`server/tests/flags.test.ts`, run with `npm test` from `server/`. Start MongoDB first
+`server/tests/flags.test.ts` (model, 16 tests) and `server/tests/moderation.test.ts`
+(routes, 22 tests), run with `npm test` from `server/`. Start MongoDB first
 with `docker compose up -d`; the suite skips itself with a warning if the database is
 unreachable, so a skipped run is not a passing run.
 
@@ -88,7 +138,15 @@ including a caller trying to override it, `populate` through `refPath`, every en
 rejection, missing required fields, the note length limit, the duplicate-flag rule
 and the two cases it must still allow, admin queue ordering, resolution bookkeeping,
 `User` defaults and lowercasing, sparse-index behaviour when `netId` is absent, and
-agreement with `isSuspended` in both states. 16 tests, all passing.
+agreement with `isSuspended` in both states.
+
+`moderation.test.ts` covers the routes: reporting a listing and a user, the reporter
+coming from the session rather than the body, signed-out refusal, the duplicate-report
+409 and the two cases that must still be allowed, self-reporting refusal, validation
+and 404s; queue access refused for students and signed-out visitors, ordering, target
+population and status filtering; and each admin action with its side effects, an
+administrator who cannot be suspended, a flag that cannot be resolved twice, and the
+rollback that returns an unperformed action's flag to the queue.
 
 ### Known failures elsewhere
 

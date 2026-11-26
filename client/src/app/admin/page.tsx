@@ -1,18 +1,24 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, Paper, Stack, Tab, Tabs, TextField, Typography } from "@mui/material";
+import Link from "next/link";
 import AuthGate from "@/components/AuthGate";
+import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { apiFetch } from "@/lib/api";
-import type { Listing, ManagedUser, MarketplaceRules } from "@/lib/types";
+import type { Listing, ManagedUser, MarketplaceRules, QueuedFlag, FlagStatus } from "@/lib/types";
+import { FLAG_REASON_LABELS } from "@/lib/types";
 
-type Section = "listings" | "users" | "rules";
-type ManagementData = { listings?: Listing[]; users?: ManagedUser[]; totalPages?: number; content?: string };
+type Section = "flags" | "listings" | "users" | "rules";
+type FlagAction = "dismiss" | "remove" | "suspend";
+type ManagementData = { listings?: Listing[]; users?: ManagedUser[]; flags?: QueuedFlag[]; totalPages?: number; content?: string };
 const errorMessage = (cause: unknown) => cause instanceof Error ? cause.message : "Something went wrong. Please try again.";
 
 export default function AdminPage() { return <AuthGate admin><AdminDashboard /></AuthGate>; }
 function AdminDashboard() {
-  const [section, setSection] = useState<Section>("listings");
+  const [section, setSection] = useState<Section>("flags");
+  const [flagStatus, setFlagStatus] = useState<FlagStatus>("open");
+  const [pendingFlag, setPendingFlag] = useState<{ flag: QueuedFlag; action: FlagAction } | null>(null);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ManagementData | null>(null);
   const [error, setError] = useState("");
@@ -25,14 +31,14 @@ function AdminDashboard() {
   const refresh = useCallback(() => { setData(null); setRevision((value) => value + 1); }, []);
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch<ManagementData>(section === "rules" ? "/api/rules" : `/api/admin/${section}?page=${page}`, { signal: controller.signal })
+    apiFetch<ManagementData>(section === "rules" ? "/api/rules" : section === "flags" ? `/api/admin/flags?page=${page}&status=${flagStatus}` : `/api/admin/${section}?page=${page}`, { signal: controller.signal })
       .then((result) => { if (!controller.signal.aborted) { setData(result); if (section === "rules") setRules(result.content ?? ""); } })
       .catch((cause) => { if (!controller.signal.aborted) setError(errorMessage(cause)); });
     return () => controller.abort();
-  }, [section, page, revision]);
+  }, [section, page, revision, flagStatus]);
   async function perform(action: () => Promise<unknown>, message: string) {
     setBusy(true); setError(""); setNotice("");
-    try { await action(); setNotice(message); setEditing(null); setTarget(null); refresh(); }
+    try { await action(); setNotice(message); setEditing(null); setTarget(null); setPendingFlag(null); refresh(); }
     catch (cause) { setError(errorMessage(cause)); }
     finally { setBusy(false); }
   }
@@ -43,14 +49,51 @@ function AdminDashboard() {
     void perform(() => apiFetch(`/api/admin/listings/${editing._id}`, { method: "PATCH", body: { title, description, price, category, condition, status } }), "Listing updated.");
   }
   return <>
-    <PageHeader title="Administration" description="Manage listings, student accounts and marketplace rules." />
+    <PageHeader title="Administration" description="Review reports, and manage listings, student accounts and marketplace rules." />
     <Tabs value={section} onChange={(_, value: Section) => { setSection(value); setPage(1); setData(null); setError(""); setNotice(""); }} sx={{ mb: 3 }} aria-label="Administration sections">
-      <Tab value="listings" label="Listings" /><Tab value="users" label="Users" /><Tab value="rules" label="Rules" />
+      <Tab value="flags" label="Flagged" /><Tab value="listings" label="Listings" /><Tab value="users" label="Users" /><Tab value="rules" label="Rules" />
     </Tabs>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}<Button onClick={() => { setError(""); refresh(); }}>Retry</Button></Alert>}
     {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
     {!data && !error && <CircularProgress aria-label="Loading administration" />}
     {data && <Stack spacing={2}>
+      {section === "flags" && <>
+        <Tabs value={flagStatus} onChange={(_, value: FlagStatus) => { setFlagStatus(value); setPage(1); setData(null); }} textColor="secondary" indicatorColor="secondary" aria-label="Report status">
+          <Tab value="open" label="Open" /><Tab value="dismissed" label="Dismissed" /><Tab value="actioned" label="Actioned" />
+        </Tabs>
+        {data.flags?.length ? data.flags.map((flag) => <Paper key={flag._id} variant="outlined" sx={{ p: 2 }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+              <Chip size="small" color="error" variant="outlined" label={FLAG_REASON_LABELS[flag.reason]} />
+              <Chip size="small" label={flag.targetType === "listing" ? "Listing" : "User"} />
+              <Typography variant="body2" sx={{ color: "text.secondary", ml: "auto" }}>
+                <time dateTime={flag.createdAt}>{new Date(flag.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>
+              </Typography>
+            </Stack>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography component="h2" variant="h6" sx={{ overflowWrap: "anywhere" }}>
+                {flag.target ? (flag.targetType === "listing" ? flag.target.title : flag.target.name) : "This item no longer exists"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Reported by {flag.reporter?.name ?? "a deleted account"}
+                {flag.target?.status ? ` · listing is ${flag.target.status}` : ""}
+                {flag.target?.suspended ? " · account suspended" : ""}
+              </Typography>
+            </Box>
+            {flag.note && <Typography sx={{ borderLeft: 2, borderColor: "divider", pl: 1.5, fontStyle: "italic", overflowWrap: "anywhere" }}>{flag.note}</Typography>}
+            {flag.status === "open" && <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              {flag.target && <Button size="small" variant="outlined" component={Link} href={flag.targetType === "listing" ? `/listings/${flag.target._id}` : `/users/${flag.target._id}`}>
+                View {flag.targetType}
+              </Button>}
+              <Button size="small" variant="contained" disabled={busy} onClick={() => setPendingFlag({ flag, action: "dismiss" })}>Dismiss</Button>
+              {flag.targetType === "listing" && <Button size="small" color="error" disabled={busy} onClick={() => setPendingFlag({ flag, action: "remove" })}>Remove listing</Button>}
+              <Button size="small" color="error" disabled={busy} onClick={() => setPendingFlag({ flag, action: "suspend" })}>
+                Suspend {flag.targetType === "listing" ? "seller" : "user"}
+              </Button>
+            </Stack>}
+          </Stack>
+        </Paper>) : <EmptyState title={flagStatus === "open" ? "Nothing to review" : `No ${flagStatus} reports`} description={flagStatus === "open" ? "Reports from students show up here." : "Switch to the Open tab for reports still waiting."} />}
+      </>}
       {section === "listings" && (data.listings?.length ? data.listings.map((listing) => <Paper key={listing._id} variant="outlined" sx={{ p: 2 }}>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ minWidth: 0 }}><Typography component="h2" variant="h6" sx={{ overflowWrap: "anywhere" }}>{listing.title}</Typography><Typography>${listing.price.toFixed(2)} · {listing.category}</Typography><Chip size="small" label={listing.status} /></Box>
@@ -87,5 +130,24 @@ function AdminDashboard() {
       {error && <Alert severity="error">{error}</Alert>}
       <Typography>{target?.name} {target?.suspended ? "will be able to sign in again." : "will lose access to posting and messaging. They can still browse publicly."}</Typography>
     </DialogContent><DialogActions><Button disabled={busy} onClick={() => setTarget(null)}>Cancel</Button><Button disabled={busy} onClick={() => { if (target) void perform(() => apiFetch(`/api/admin/users/${target._id}`, { method: "PATCH", body: { suspended: !target.suspended } }), "Account updated."); }}>Confirm</Button></DialogActions></Dialog>
+    <Dialog open={!!pendingFlag} onClose={() => { if (!busy) setPendingFlag(null); }} fullWidth maxWidth="xs">
+      <DialogTitle>
+        {pendingFlag?.action === "dismiss" ? "Dismiss this report?" : pendingFlag?.action === "remove" ? "Remove this listing?" : "Suspend this account?"}
+      </DialogTitle>
+      <DialogContent>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Typography>
+          {pendingFlag?.action === "dismiss" && "The report is closed and nothing else changes."}
+          {pendingFlag?.action === "remove" && "The listing disappears from browsing and saved lists. The report is closed."}
+          {pendingFlag?.action === "suspend" && "They lose access to signing in and messaging, and their active listings are hidden. The report is closed."}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button disabled={busy} onClick={() => setPendingFlag(null)}>Cancel</Button>
+        <Button disabled={busy} color={pendingFlag?.action === "dismiss" ? "primary" : "error"} onClick={() => {
+          if (pendingFlag) void perform(() => apiFetch(`/api/admin/flags/${pendingFlag.flag._id}`, { method: "PATCH", body: { action: pendingFlag.action } }), "Report resolved.");
+        }}>Confirm</Button>
+      </DialogActions>
+    </Dialog>
   </>;
 }
