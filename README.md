@@ -60,6 +60,7 @@ Then open:
 - http://localhost:3000/admin/login for administrator sign-in and management
 - http://localhost:3000/rules for public marketplace rules
 - Click **View seller profile** on any listing to view the seller’s profile after signing in
+- http://localhost:3000/saved for your saved listings. Tap the heart on any listing card to save it (signed-in students; see [Favorites](docs/FAVORITES.md))
 - http://localhost:3000/ui for the shared components
 - http://localhost:3000/messages for chat. Messaging requires a signed-in account and an existing conversation.
 
