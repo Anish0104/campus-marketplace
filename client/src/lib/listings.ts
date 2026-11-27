@@ -35,6 +35,6 @@ export function toListingSummary(listing: Listing | FeedListing): ListingSummary
   return {
     id: listing._id, title: listing.title, price: listing.price,
     category: listing.category, condition: listing.condition,
-    imageUrl: listing.photos[0], createdAt: listing.createdAt,
+    imageUrl: listing.photos[0], sellerId: listing.seller, createdAt: listing.createdAt,
   };
 }

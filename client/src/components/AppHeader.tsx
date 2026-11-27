@@ -14,6 +14,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { useCurrentUser } from "./CurrentUserProvider";
 import { useHydrated } from "@/lib/useHydrated";
@@ -23,7 +24,10 @@ import { tokens } from "@/theme/tokens";
 const NAV = [
   { href: "/", label: "Browse", icon: <StorefrontOutlinedIcon /> },
   { href: "/messages", label: "Messages", icon: <ChatBubbleOutlineIcon /> },
+  { href: "/saved", label: "Saved", icon: <FavoriteBorderIcon /> },
 ];
+/** Links that only make sense once signed in. */
+const SIGNED_IN_ONLY = ["/messages", "/saved"];
 
 /** Top navigation shown on every page (rendered in app/layout.tsx). */
 export default function AppHeader() {
@@ -72,7 +76,7 @@ export default function AppHeader() {
           </Typography>
 
           <Stack direction="row" spacing={0.5} sx={{ display: { xs: "none", md: "flex" }, ml: 2 }}>
-            {NAV.filter((item) => item.href !== "/messages" || user).map((item) => (
+            {NAV.filter((item) => !SIGNED_IN_ONLY.includes(item.href) || user).map((item) => (
               <Button
                 key={item.href}
                 component={Link}
@@ -96,7 +100,7 @@ export default function AppHeader() {
           <Box sx={{ flexGrow: 1 }} />
 
           <Stack direction="row" spacing={0.5} sx={{ display: { xs: "flex", md: "none" } }}>
-            {NAV.filter((item) => item.href !== "/messages" || user).map((item) => (
+            {NAV.filter((item) => !SIGNED_IN_ONLY.includes(item.href) || user).map((item) => (
               <Tooltip key={item.href} title={navLabel(item)}>
                 <IconButton
                   component={Link}
