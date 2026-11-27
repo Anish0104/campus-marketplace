@@ -11,6 +11,8 @@ export type ListingSummary = {
   category: string;
   imageUrl?: string;
   sellerName?: string;
+  /** Lets the card hide its Save button on your own listings. */
+  sellerId?: string;
   createdAt: string; // ISO date
 };
 
@@ -81,6 +83,20 @@ export type PublicProfile = {
   netId: string | null;
   memberSince: string; // ISO date
   listings: FeedListing[]; // active listings, newest first
+};
+
+/**
+ * One entry of GET /api/favorites (Santanu).
+ * - available: active, can be opened and bought.
+ * - sold: its page still opens, but it is no longer for sale.
+ * - unavailable: removed, deleted, or its seller is suspended. Only the title is kept.
+ */
+export type SavedListing = {
+  listingId: string;
+  savedAt: string;
+  availability: "available" | "sold" | "unavailable";
+  title: string | null;
+  listing: FeedListing | null;
 };
 
 /** A category that has active listings, from GET /api/listings/categories. */

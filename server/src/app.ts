@@ -12,6 +12,7 @@ import { usersRouter } from "./routes/users";
 import { adminRouter } from "./routes/admin";
 import { rulesRouter } from "./routes/rules";
 import { flagsRouter } from "./routes/flags";
+import { favoritesRouter } from "./routes/favorites";
 
 export function createApp() {
   const app = express();
@@ -76,6 +77,7 @@ export function createApp() {
   app.use("/api/listings", feedRouter); // GET / and /categories; must come before /:id
   app.use("/api/listings", listingsRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/favorites", favoritesRouter);
 
   // Last resort: turn unexpected errors into a JSON 500 instead of an HTML page.
   app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {

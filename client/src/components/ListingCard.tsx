@@ -10,19 +10,25 @@ import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import ConditionChip from "./ConditionChip";
 import PriceTag from "./PriceTag";
 import RelativeTime from "./RelativeTime";
+import SaveButton from "./SaveButton";
 import type { ListingSummary } from "@/lib/types";
 import { tokens } from "@/theme/tokens";
 
-/** One listing in a grid. Links to /listings/<id>. */
+/** One listing in a grid. Links to /listings/<id>. Signed-in students get a Save heart. */
 export default function ListingCard({ listing }: { listing: ListingSummary }) {
   return (
     <Card
       sx={{
+        position: "relative",
         height: "100%",
         transition: "border-color 120ms",
         "&:hover": { borderColor: tokens.muted },
       }}
     >
+      {/* A sibling of the link, not inside it: a button can't be nested in a link. */}
+      <Box sx={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}>
+        <SaveButton listingId={listing.id} title={listing.title} sellerId={listing.sellerId} />
+      </Box>
       <CardActionArea
         component={Link}
         href={`/listings/${listing.id}`}
